@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
             worker1->extract();
         else if (argc == 4)
             worker1->extract_one_target(argv[3]);
+        delete worker1;
     }
     else
         std::cerr << "Usage: BarcodeExtract in_bam out <chr>" << std::endl;

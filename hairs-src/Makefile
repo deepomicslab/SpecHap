@@ -21,10 +21,6 @@ all: $(B)/extractHAIRS
 # credit to lhunath for the one-line check for git below http://stackoverflow.com/questions/592620/check-if-a-program-exists-from-a-bash-script
 $(SAMTOOLS)/Makefile:
 	@hash git 2>/dev/null || { echo >&2 "Git not installed (required for auto-download of required submodules). Install git and retry, or manually download samtools 1.2 and htslib 1.2.1 and place the unzipped folders in \"submodules\" directory with names matching their Makefile variables (default \"samtools\" and \"htslib\")"; exit 1; }
-	cd ..
-	git submodule init
-	git submodule update
-	cd hairs-src
 # just call the samtools makefile target because it downloads both htslib and samtools submodules
 $(HTSLIB)/Makefile: $(SAMTOOLS)/Makefile
 

@@ -5,6 +5,7 @@
 #ifndef SPECHAP_PHASER_H
 #define SPECHAP_PHASER_H
 
+#include "type.h"
 #include "vcf_io.h"
 #include "frag_io.h"
 #include "optionparser.h"
@@ -12,7 +13,7 @@
 enum optionIndex
 {
     UNKNOWN, HELP, VCF, FRAGMENT, OUT, TENX, HIC, WINDOW_SIZE, COVERAGE, RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
-    MAX_BARCODE_SPANNING_LENGTH, WINDOW_OVERLAP, STATS, NEWFORMAT, USESECONDARY
+    MAX_BARCODE_SPANNING_LENGTH, WINDOW_OVERLAP, STATS, NEWFORMAT, USESECONDARY, KEEP_PHASING_INFO
 };
 
 class Phaser
@@ -41,6 +42,7 @@ private:
     void phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser);
     void phase_HiC_recursive(ChromoPhaser *chromo_phaser);
     int load_contig_records(ChromoPhaser *chromo_phaser);
+    int load_contig_blocks(ChromoPhaser *chromo_phaser);
 };
 
 #endif //SPECHAP_PHASER_H

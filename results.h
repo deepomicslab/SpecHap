@@ -49,6 +49,7 @@ public:
     int dp;
     double af;
     uint pos;
+    uint ps;                                    //phased block no;
     int L0_G0, L0_G1, L1_G1, L1_G0;            //L0: local hap 0, L1: local hap 1, G1: global hap 1, G0: global hap 0
     double MMD;
     int rescued, not_rescued;

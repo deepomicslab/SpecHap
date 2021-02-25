@@ -51,6 +51,7 @@ const option::Descriptor usage[] =
                 {WINDOW_SIZE, 0, "w", "window_size", Arg::Numeric,  "\t-w [<arg>],\t--window_size [<arg>]\tPhasing Window Size, default=250."},
                 {WINDOW_OVERLAP, 0, "O", "window_overlap", Arg::Numeric,  "\t-O [<arg>],\t--window_overlap [<arg>]\tOverlap length between consecutive phasing window, default=60."},
                 {NEWFORMAT, 0, "", "new_format",      Arg::None,     "\t--new_format\tSpecified when using new_format with extractHair"},
+                {KEEP_PHASING_INFO, 0, "", "keep_phasing_info", Arg::None, "\t--keep_phasing_info\tSpecified when trying to keep previous phasing info"},
                 {0,           0,   0,          0,               0,   0 }
         };
 

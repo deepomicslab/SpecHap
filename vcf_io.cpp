@@ -273,6 +273,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     free(gt_arr);
 }
 
+//TODO: change PS label into the POS of block starting variant.
 
 void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf)
 {

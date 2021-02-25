@@ -76,6 +76,11 @@ public:///=//public:
     void join_block_overlap(std::shared_ptr<PhasedBlock> rhs);                          //merge the content of overlapping block
     inline bool contain_variant(uint idx) { return results.count(idx) != 0; }
     void filter_inconsistency(std::set<uint> &filtered_idx);
+    inline void insert_variant(uint variant_idx, ptr_ResultforSingleVariant result)
+    {
+        results[variant_idx] = result;
+        variant_idxes.insert(variant_idx);
+    }
     std::string get_hap();
 };
 
@@ -129,11 +134,20 @@ public:
     inline uint var_idx2mat_idx(uint var_idx) { return variant2mat_index[var_idx];}
 
     inline uint curr_window_block_count() { return  uint(current_window_idxes.size());}
-    inline void insert_block_initial(uint start_var_idx, ptr_ResultforSingleVariant result)
+    inline void insert_block_initial(uint start_var_idx, uint var_idx, ptr_ResultforSingleVariant result)
     {
-        blocks[start_var_idx] = std::make_shared<PhasedBlock> (start_var_idx, result);
-        prev_block_idxes.push_back(start_var_idx);
-        block_idxes[start_var_idx] = start_var_idx;
+        if (blocks.count(start_var_idx) == 0)
+        {
+            blocks[start_var_idx] = std::make_shared<PhasedBlock> (start_var_idx, result);
+            prev_block_idxes.push_back(start_var_idx);
+            block_idxes[start_var_idx] = start_var_idx;
+        }
+        else {
+            auto block = blocks[start_var_idx];
+            block->insert_variant(var_idx, result);
+            block_idxes[var_idx] = start_var_idx;
+        }
+        
     }
     inline void insert_block_initial_recursive_solver(uint start_var_idx, std::shared_ptr<PhasedBlock> &block, bool overlap)
     {
@@ -171,6 +185,7 @@ public:
     uint chr_id;
     std::string chr_name;
     uint variant_count;         //variant no to phase
+    uint block_count;
     uint window_overlap;
     uint intended_window_size, pre_intended_window_size;    //intended_window_size: recusivly increasing
     uint window_size;          //window size with overlap
@@ -181,7 +196,8 @@ public:
 
     //ChromoPhaser is obliged to manage the following two container
     std::vector<std::shared_ptr<ResultforSingleVariant> > results_for_variant;
-        //use this for recursive solver
+    std::unordered_map<uint, uint> variant_to_block_id;
+    
 
     ptr_PhasingWindow phased;
 
@@ -199,7 +215,7 @@ public:
         window_size = intended_window_size + window_overlap;
         //window_no = uint(ceil(phased->curr_window_block_count() / double (window_size) ));
     }
-    inline uint block_count() { return uint(phased->blocks.size());}
+    inline uint get_block_count() { return uint(phased->blocks.size());}
     inline uint get_var_pos(uint idx) { return results_for_variant[idx]->get_pos(); }
 
 

@@ -31,6 +31,7 @@ public:
     tbx_t *tbx_index;
     kstring_t tmp;
     int *dps, *ads;
+    int *ps_s;                  //PS
     float *afs;
     bcf1_t *buffer;
 
@@ -113,13 +114,16 @@ public:
         int dp = 0, ndp;
         int af = 0, naf;
         int ad = 0, nad;
+        int ps = 0, nps;
         ndp = bcf_get_info_int32(header, buffer, "DP", &dps, &dp);
         naf = bcf_get_info_float(header, buffer, "AF", &afs, &af);
         nad = bcf_get_format_int32(header ,buffer, "AD", &ads, &ad);
+        nps = bcf_get_format_int32(header ,buffer, "PS", &ps_s, &ps);
         buffer->qual == NAN ? result->qual = 40 : result->qual = buffer->qual;
         result->pos = buffer->pos;
         dps == nullptr ? result->dp = 30 : result->dp = dps[0];
         afs == nullptr ? result->af = 0.5 : result->af = afs[0];
+        ps_s == nullptr ? result->ps = 0: result->ps = ps_s[0];
         if (ads != nullptr)
         {
             if (nad == 2)

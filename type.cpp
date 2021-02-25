@@ -456,7 +456,7 @@ ChromoPhaser::~ChromoPhaser()
 void ChromoPhaser::construct_phasing_window_initialize()
 {
     for (uint i = 0; i < variant_count; i++)
-        phased->insert_block_initial(i, results_for_variant[i]);
+        phased->insert_block_initial(this->variant_to_block_id[i], i, results_for_variant[i]);
     phased->total_blk_count = phased->rest_blk_count = variant_count;
 }
 

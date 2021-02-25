@@ -4,8 +4,12 @@
 
 #include "phaser.h"
 #include "htslib/vcf.h"
+#include "type.h"
 #include <iostream>
 #include <cstdlib>
+#include <unordered_map>
+
+// TODO clarify between variant count and block count
 
 Phaser::Phaser(std::vector<option::Option> &options)
 {
@@ -37,7 +41,7 @@ Phaser::Phaser(std::vector<option::Option> &options)
         overlap = int(atoi(options[WINDOW_OVERLAP].arg));
 
     coverage = 30;  //deprecated
-    max_barcode_spanning_length = 60000;    //deprecated
+    max_barcode_spanning_length = 60000;    
     recursive_limit = 15;       //deprecated
 
     if (options[TENX])
@@ -71,6 +75,43 @@ int Phaser::load_contig_records(ChromoPhaser *chromo_phaser)
 
 
     chromo_phaser->variant_count = chromo_phaser->results_for_variant.size();
+    for (int i = 0; i < chromo_phaser->variant_count; i++)
+    {
+        chromo_phaser->variant_to_block_id[i] = i;
+    }
+    chromo_phaser->block_count = chromo_phaser->variant_count;
+    return status;
+}
+
+int Phaser::load_contig_blocks(ChromoPhaser *chromo_phaser)
+{
+    int status = 0;
+    this->load_contig_records(chromo_phaser);
+    
+    std::unordered_map<uint, uint> ps2block_ids;
+    uint block_count = 0;
+    for (int i = 0; i < chromo_phaser->variant_count; i++)
+    {
+        auto result = chromo_phaser->results_for_variant[i];
+        uint ps = result->ps;
+        if (ps == 0) //not phased 
+        {
+            chromo_phaser->variant_to_block_id[i] = block_count;
+            block_count++;
+        }
+        else {      //phased
+            if (ps2block_ids.count(ps) == 0)
+            {   // not met before
+                ps2block_ids[ps] = block_count;
+                chromo_phaser->variant_to_block_id[i] = ps2block_ids[ps];
+                block_count++;
+            }
+            else {
+                chromo_phaser->variant_to_block_id[i] = ps2block_ids[ps];
+            }
+        }
+    }
+    chromo_phaser->block_count = block_count;
     return status;
 }
 
@@ -124,7 +165,7 @@ void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser)
     uint prev_blk_count;
     for(int j = 0; j < recursive_limit; j++)
     {
-        prev_blk_count = chromo_phaser->block_count();
+        prev_blk_count = chromo_phaser->get_block_count();
         chromo_phaser->construct_phasing_window_r_initialize();
         while (chromo_phaser->phased->rest_blk_count > 0)
         {
@@ -132,9 +173,9 @@ void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser)
             spectral->clean();
             spectral->solver_recursive();
         }
-        if (prev_blk_count == chromo_phaser->block_count())
+        if (prev_blk_count == chromo_phaser->get_block_count())
             break;
-        prev_blk_count = chromo_phaser->block_count();
+        prev_blk_count = chromo_phaser->get_block_count();
     }
 }
 

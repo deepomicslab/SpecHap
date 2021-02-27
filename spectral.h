@@ -40,7 +40,6 @@ inline double cal_score(double a, double b)
 }
 
 //---------------------------------------solver class------------------------------------------------
-//TODO: expose chromophaser into spectral
 class Spectral
 {
 private:
@@ -288,6 +287,40 @@ private:
                 nvar->insert(i);
             count++;
         }
+    }
+
+    // function for disjoint set implementation
+    inline void make_set(uint v, std::vector<uint> &parent, std::vector<uint> &size) 
+    {
+        parent[v] = v;
+        size[v] = 0;
+    }
+
+    inline int find_set(uint v, std::vector<uint> &parent) 
+    {
+        if (v == parent[v])
+            return v;
+        return parent[v] = find_set(parent[v], parent);
+    }
+
+    void union_sets(uint a, uint b, std::vector<uint> &parent, std::vector<uint> &size) 
+    {
+        a = find_set(a, parent);
+        b = find_set(b, parent);
+        if (a != b) 
+        {
+            if (size[a] < size[b])
+                swap(a, b);
+            parent[b] = a;
+            size[a] += size[b];
+        }
+    }
+
+    inline void swap(uint &a, uint &b)
+    {
+        int tmp = a;
+        a = b;
+        b = tmp;
     }
 };
 

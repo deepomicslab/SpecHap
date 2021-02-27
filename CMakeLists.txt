@@ -5,7 +5,7 @@ set(CMAKE_C_COMPILER gcc)
 project(SpecHap)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE RELEASE)
+set(CMAKE_BUILD_TYPE DEBUG)
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXX_FLAGS} -O0 -Wall -ggdb -fkeep-inline-functions")
 set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 

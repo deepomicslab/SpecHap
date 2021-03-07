@@ -281,7 +281,6 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
     if (fragment.snps.empty())
         return;
 
-    int idxa, idxb, idxa_cp, idxb_cp;
     fragment.read_qual == 0 ? fragment.read_qual -= 1 : 0;
     std::map<uint, std::pair<double,double> > block_supporting_likelyhood;
     for (auto &i : fragment.snps) {
@@ -341,8 +340,6 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
 
 void Spectral::add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_graph)
 {
-    double barcode_qual;
-    int idxa, idxb, idxa_cp, idxb_cp;
 
     for (auto &content : this->barcode_linker->barcodes)
     {
@@ -407,7 +404,6 @@ void Spectral::add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_gra
 
 void Spectral::add_snp_edge_hic(ViewMap &weighted_graph, std::set<uint> &var_idx, std::map<uint, uint> &var_idx_map)
 {
-    int idxa, idxb, idxa_cp, idxb_cp;
     for (auto it = this->hic_linker_container.linker.begin(); it != this->hic_linker_container.linker.end(); it++)
     {
         std::map<uint, std::pair<double,double> > block_supporting_likelyhood;
@@ -650,9 +646,6 @@ void Spectral::solver()
 
 void Spectral::add_snp_edge_barcode_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph &sub_variant_graph, std::map<uint, int> &subroutine_map, std::map<uint, uint> & subroutine_blk_start)
 {
-    double barcode_qual;
-    int idxa, idxb, idxa_cp, idxb_cp;
-
     for (auto &content : this->barcode_linker->barcodes)
     {
         std::map<uint, std::pair<double,double> > block_supporting_likelyhood;
@@ -996,7 +989,7 @@ void Spectral::find_connected_component(const Eigen::MatrixBase<Derived> &adj_ma
 
     auto it = variant_idx.begin();
     settled[*it] = true;
-    uint prev_idx, idx, start_idx, i;
+    uint prev_idx, start_idx;
     prev_idx = start_idx = phasing_window->mat_idx2var_idx(subroutine_blk_start[*it]);
     ptr_PhasedBlock phased_blk = phasing_window->blocks[start_idx];
     // not phased yet
@@ -1810,7 +1803,6 @@ void Spectral::hic_poss_solver()
                     std::map<uint, uint> subroutine_blk_start;
                     std::map<uint,double> block_qualities;
                     call_haplotype(sub_mat, variants_mat, block_count, subroutine_map, subroutine_blk_start, false, block_qualities);
-
                 }
                 block_no++;
             }

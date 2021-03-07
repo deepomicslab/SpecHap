@@ -12,7 +12,7 @@ ResultforSingleVariant::ResultforSingleVariant()
          L0_G0(0), L0_G1(0), L1_G1(0), L1_G0(0), ad0(1), ad1(1), rescued(0), not_rescued(0), MMD(0),
          nMMD(0), filtered(false)
 {
-
+    
 }
 
 ResultforSingleVariant::ResultforSingleVariant(bcf1_t *record)

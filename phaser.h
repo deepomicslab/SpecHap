@@ -43,6 +43,7 @@ private:
     void phase_HiC_recursive(ChromoPhaser *chromo_phaser);
     int load_contig_records(ChromoPhaser *chromo_phaser);
     int load_contig_blocks(ChromoPhaser *chromo_phaser);
+    bool use_input_ps;
 };
 
 #endif //SPECHAP_PHASER_H

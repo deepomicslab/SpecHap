@@ -144,6 +144,7 @@ PhasingWindow::PhasingWindow(uint intended_windows_size,  uint overlap_length)
 {
     intended_window_length = intended_windows_size;
     phased_blk_count = phasing_block_size = 0;
+    this->end = 0;
 
     this->overlap_length = overlap_length;
     this->intended_start = 0;
@@ -285,10 +286,97 @@ void PhasingWindow::update_phasing_info(int max_barcode_spanning_length)
     rest_blk_count = total_blk_count - phased_blk_count;
 }
 
+void PhasingWindow::update_phasing_info_keep_phased()
+{
+    auto i = block_idxes.find(end);
+    uint count = 0;
+    //the first window
+    phasing_block_size = 0;
+    variant2mat_index.clear();
+    mat2variant_index.clear();
+    current_window_idxes.clear();
+    uint temp = intended_start;
+    uint temp_start = 0;
+    current_window_overlap_region_block_size.clear();
+
+
+    if (i == block_idxes.begin())
+    {
+        phased_blk_count = 0;
+        start = intended_start;
+        if (phased_blk_count + intended_window_length >= prev_block_idxes.size())
+            end = intended_end = prev_block_idxes.back() + 1;
+        else
+        {
+            intended_end = prev_block_idxes[phased_blk_count + intended_window_length];
+            if (phased_blk_count + intended_window_length + overlap_length >= prev_block_idxes.size())
+                end = prev_block_idxes.back() + 1;
+            else
+                end = prev_block_idxes[phased_blk_count + intended_window_length + overlap_length];
+        }
+        intended_start = intended_start + intended_window_length + overlap_length;
+    }
+    else {
+        
+        //determine true start
+        temp_start = i ->first;
+        while ( count < overlap_length  )
+        {
+            count++;
+
+            if (i == block_idxes.begin())
+                break;
+            i = prev(i);
+        }
+        start = i->first;
+        
+        if (phased_blk_count + intended_window_length - overlap_length >= prev_block_idxes.size())
+            end = intended_end = prev_block_idxes.back() + 1;
+        else
+        {
+            intended_end = prev_block_idxes[phased_blk_count + intended_window_length - overlap_length];
+            if (phased_blk_count + intended_window_length >= prev_block_idxes.size())
+                end = prev_block_idxes.back() + 1;
+            else
+                end = prev_block_idxes[phased_blk_count + intended_window_length];
+        }
+        intended_start = intended_start + intended_window_length;
+    }
+    auto it = i;
+
+    int offset = 0;
+    for (; it != block_idxes.end() && it->first != end; it++, phasing_block_size++)
+    {
+        
+        ptr_PhasedBlock blk = blocks[it->first];
+        if (blk->size() == 1)
+            if (blk->results.begin()->second->get_filter() == filter_type::POOLRESULT)
+                continue;
+        for (auto idx : blk->variant_idxes)
+            variant2mat_index[idx] = phasing_block_size;
+        mat2variant_index[phasing_block_size] = it->first;
+        current_window_idxes.push_back(it->first);
+        if (it->first >= temp_start)
+        {
+            offset ++; 
+            //if (blk->size() > 1)
+                //offset = offset - blk->size() + 1; 
+        }
+    }
+
+
+    phased_blk_count += offset;
+    prev_window_start = temp;
+    rest_blk_count = total_blk_count - phased_blk_count;
+}
+
 void PhasingWindow::update_phasing_info()
 {
     //three parameters to be determined:
     //starting point, ending point, and block count
+
+    //TODO found a bug here, prev_block_idxes might not contain intended start if block read from vcf 
+    // The index system works for single snv node instead of block
     auto i = block_idxes.find(prev_block_idxes[intended_start]);
     uint count = 0;
     //the first window
@@ -457,7 +545,7 @@ void ChromoPhaser::construct_phasing_window_initialize()
 {
     for (uint i = 0; i < variant_count; i++)
         phased->insert_block_initial(this->variant_to_block_id[i], i, results_for_variant[i]);
-    phased->total_blk_count = phased->rest_blk_count = variant_count;
+    phased->total_blk_count = phased->rest_blk_count = phased->blocks.size();
 }
 
 void ChromoPhaser::construct_phasing_window_r_initialize()

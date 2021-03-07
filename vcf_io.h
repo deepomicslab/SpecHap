@@ -30,9 +30,7 @@ public:
     hts_itr_t *iter;
     tbx_t *tbx_index;
     kstring_t tmp;
-    int *dps, *ads;
-    int *ps_s;                  //PS
-    float *afs;
+    
     bcf1_t *buffer;
 
 public:
@@ -92,7 +90,7 @@ public:
         return status;
     }
     void read_into_struct(bcf1_t *record, ptr_ResultforSingleVariant &result);
-    inline int get_next_record_contig(ptr_ResultforSingleVariant &result)
+    inline int get_next_record_contig(ptr_ResultforSingleVariant &result, bool use_gt)
     {
         //bcf_empty(record);
         //no such contig or iter not initialized
@@ -115,6 +113,9 @@ public:
         int af = 0, naf;
         int ad = 0, nad;
         int ps = 0, nps;
+        int *dps = nullptr, *ads = nullptr;
+        int *ps_s = nullptr;                  //PS
+        float *afs = nullptr;
         ndp = bcf_get_info_int32(header, buffer, "DP", &dps, &dp);
         naf = bcf_get_info_float(header, buffer, "AF", &afs, &af);
         nad = bcf_get_format_int32(header ,buffer, "AD", &ads, &ad);
@@ -137,10 +138,38 @@ public:
                 result->ad1 = ads[2];
             }
         }
+        free(dps); free(ads); free(ps_s); free(afs);
 
+        if (use_gt)
+        {   
+            int32_t *gt_arr = nullptr, ngt_arr = 0;
+            bcf_get_genotypes(header, buffer, &gt_arr, &ngt_arr);
+            int32_t *ptr = gt_arr;
+            int allele0 = bcf_gt_allele(ptr[0]);
+            int allele1 = bcf_gt_allele(ptr[1]);
+            
+
+            if (allele1 == allele0)
+            {
+                free(gt_arr);
+                return 0;
+            }
+            if (ps_s != nullptr)
+            {
+                if (allele0 == 0)
+                    result->set_hap_0();
+                else if (allele0 == 1)
+                    result->set_hap_1();
+                result->set_phased();
+                //std::cout<< allele0 << ";" << allele1 << std::endl;
+            }
+            free(gt_arr);
+            
+        }
         //bcf_destroy(r);
         return status;
     }
+
     inline int jump_to_contig(int contig_id)
     {
         curr_contig = contig_id;

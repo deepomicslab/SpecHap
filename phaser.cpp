@@ -30,7 +30,11 @@ Phaser::Phaser(std::vector<option::Option> &options)
     frvcf = new VCFReader(options[VCF].arg);
     fwvcf = new VCFWriter(frvcf->header, options[OUT].arg);
     frfrag = new FragmentReader(options[FRAGMENT].arg);
+    this->use_input_ps = false;
 
+    if (options[KEEP_PHASING_INFO])
+        this->use_input_ps = true;
+    
     if (options[WINDOW_SIZE].arg == nullptr)
         window_size = 200;
     else
@@ -68,7 +72,7 @@ int Phaser::load_contig_records(ChromoPhaser *chromo_phaser)
     while (true)
     {
         ptr_ResultforSingleVariant result = std::make_shared<ResultforSingleVariant>();
-        if (this->frvcf->get_next_record_contig(result) != 0)
+        if (this->frvcf->get_next_record_contig(result, false) != 0)
             break;
         chromo_phaser->results_for_variant.push_back(result);
     }
@@ -79,14 +83,24 @@ int Phaser::load_contig_records(ChromoPhaser *chromo_phaser)
     {
         chromo_phaser->variant_to_block_id[i] = i;
     }
-    chromo_phaser->block_count = chromo_phaser->variant_count;
+    chromo_phaser->init_block_count = chromo_phaser->variant_count;
     return status;
 }
+
 
 int Phaser::load_contig_blocks(ChromoPhaser *chromo_phaser)
 {
     int status = 0;
-    this->load_contig_records(chromo_phaser);
+    while (true)
+    {
+        ptr_ResultforSingleVariant result = std::make_shared<ResultforSingleVariant>();
+        if (this->frvcf->get_next_record_contig(result, true) != 0)
+            break;
+        chromo_phaser->results_for_variant.push_back(result);
+    }
+
+    chromo_phaser->variant_count = chromo_phaser->results_for_variant.size();
+    
     
     std::unordered_map<uint, uint> ps2block_ids;
     uint block_count = 0;
@@ -96,13 +110,13 @@ int Phaser::load_contig_blocks(ChromoPhaser *chromo_phaser)
         uint ps = result->ps;
         if (ps == 0) //not phased 
         {
-            chromo_phaser->variant_to_block_id[i] = block_count;
+            chromo_phaser->variant_to_block_id[i] = i;
             block_count++;
         }
         else {      //phased
             if (ps2block_ids.count(ps) == 0)
             {   // not met before
-                ps2block_ids[ps] = block_count;
+                ps2block_ids[ps] = i;
                 chromo_phaser->variant_to_block_id[i] = ps2block_ids[ps];
                 block_count++;
             }
@@ -111,9 +125,10 @@ int Phaser::load_contig_blocks(ChromoPhaser *chromo_phaser)
             }
         }
     }
-    chromo_phaser->block_count = block_count;
+    chromo_phaser->init_block_count = block_count;
     return status;
 }
+
 
 void Phaser::phasing()
 {
@@ -124,7 +139,10 @@ void Phaser::phasing()
         if (frvcf->jump_to_contig(rid) != 0)
             break;
         ChromoPhaser *chromo_phaser = new ChromoPhaser(rid, frvcf->contigs[rid], overlap, window_size);
-        load_contig_records(chromo_phaser);
+        if (this->use_input_ps)
+            load_contig_blocks(chromo_phaser);
+        else
+            load_contig_records(chromo_phaser);
         chromo_phaser->construct_phasing_window_initialize();
         frfrag->set_prev_chr_var_count(prev_variant_count);
         spectral->set_chromo_phaser(chromo_phaser);
@@ -138,27 +156,32 @@ void Phaser::phasing()
     }
 }
 
+
 void Phaser::phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser)
 {
     frfrag->set_curr_chr_var_count(var_count);
 
     while (chromo_phaser->phased->rest_blk_count > 0)
     {
-        if (chromo_phaser->phased->rest_blk_count > chromo_phaser->variant_count)
+        if (chromo_phaser->phased->rest_blk_count > chromo_phaser->init_block_count)
             break;
         if (op == op_mode::TENX)
             chromo_phaser->phased->update_phasing_info(max_barcode_spanning_length);
         else
-            chromo_phaser->phased->update_phasing_info();
+            {
+                if (this->use_input_ps)
+                    chromo_phaser->phased->update_phasing_info_keep_phased();
+                else 
+                    chromo_phaser->phased->update_phasing_info();
+            }
         spectral->solver();
         //std::cout << chromo_phaser->phased->phased_blk_count << std::endl;
-
     }
 
     if (op == op_mode::HIC)
         spectral->hic_poss_solver();
-
 }
+
 
 void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser)
 {

@@ -38,9 +38,6 @@ VCFReader::VCFReader(const char *filename)
         exit(-1);
     }
     tmp = {0, 0, nullptr};
-    dps = nullptr;
-    afs = nullptr;
-    ads = nullptr;
     get_contigs();
     buffer = bcf_init();
     //count_contigs();
@@ -56,10 +53,7 @@ VCFReader::~VCFReader()
     var_count.clear();
     hts_itr_destroy(iter);
     tbx_destroy(tbx_index);
-    free(dps);
     free(tmp.s);
-    free(afs);
-    free(ads);
     bcf_destroy(buffer);
 }
 
@@ -265,7 +259,10 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     int k = bcf_hdr_id2int(this->header, BCF_DT_ID, filter);
     bcf_update_filter(this->header, record, &k, 1);
     bcf_update_genotypes(this->header, record, gt, ngt);
-    bcf_update_format_int32(this->header, record, "PS", &blk_no, 1);
+    
+    if (resultforSingleVariant->variant_phased())
+        bcf_update_format_int32(this->header, record, "PS", &blk_no, 1);
+
     bcf1_t *record_w = bcf_dup(record);
     //bcf_unpack(record_w, BCF_UN_ALL);
     int rr = bcf_write(this->fp, this->header, record_w);
@@ -273,7 +270,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     free(gt_arr);
 }
 
-//TODO: change PS label into the POS of block starting variant.
+
 
 void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf)
 {
@@ -282,9 +279,11 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
     int gap_count = 0;
     std::unordered_map<ptr_PhasedBlock, uint > encountered_phased_block;
     frvcf.jump_to_contig(frvcf.curr_contig);
+    std::unordered_map<uint, uint> idx2pos;
     for (uint idx = 0; idx < chromo_phaser->variant_count; idx++)
     {
         frvcf.get_next_record(record);
+        idx2pos[idx] = record->pos + 1;
 
         ptr_ResultforSingleVariant resultforSingleVariant = chromo_phaser->results_for_variant[idx];
         bcf_translate(this->header, frvcf.header, record);
@@ -305,12 +304,12 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
             if (encountered_phased_block.count(block) != 0)
             {
                 uint blk_no = encountered_phased_block[block];
-                write_nxt_record(record, resultforSingleVariant, blk_no);
+                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
             }
             else
             {
                 encountered_phased_block.emplace(block, ++blk_count);
-                write_nxt_record(record, resultforSingleVariant, blk_count);
+                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
             }
 
             gap_count = 0;

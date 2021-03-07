@@ -127,6 +127,7 @@ public:
     }
     void update_phasing_info(int max_barcode_spanning_length);
     void update_phasing_info();
+    void update_phasing_info_keep_phased();
     void initialize_for_recursive_solver(uint intended_window_size, uint overlap);
 
     inline bool in_range(uint var_idx) { return variant2mat_index.count(var_idx) != 0;}
@@ -134,21 +135,24 @@ public:
     inline uint var_idx2mat_idx(uint var_idx) { return variant2mat_index[var_idx];}
 
     inline uint curr_window_block_count() { return  uint(current_window_idxes.size());}
+
     inline void insert_block_initial(uint start_var_idx, uint var_idx, ptr_ResultforSingleVariant result)
     {
         if (blocks.count(start_var_idx) == 0)
         {
             blocks[start_var_idx] = std::make_shared<PhasedBlock> (start_var_idx, result);
+            result->block = blocks[start_var_idx];
             prev_block_idxes.push_back(start_var_idx);
             block_idxes[start_var_idx] = start_var_idx;
         }
         else {
             auto block = blocks[start_var_idx];
             block->insert_variant(var_idx, result);
-            block_idxes[var_idx] = start_var_idx;
-        }
-        
+            result->block = blocks[start_var_idx];
+            //block_idxes[var_idx] = start_var_idx;
+        }    
     }
+    
     inline void insert_block_initial_recursive_solver(uint start_var_idx, std::shared_ptr<PhasedBlock> &block, bool overlap)
     {
         blocks[start_var_idx] = block;
@@ -185,7 +189,7 @@ public:
     uint chr_id;
     std::string chr_name;
     uint variant_count;         //variant no to phase
-    uint block_count;
+    uint init_block_count;
     uint window_overlap;
     uint intended_window_size, pre_intended_window_size;    //intended_window_size: recusivly increasing
     uint window_size;          //window size with overlap

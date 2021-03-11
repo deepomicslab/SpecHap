@@ -41,6 +41,7 @@ private:
     int max_barcode_spanning_length;
     void phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser);
     void phase_HiC_recursive(ChromoPhaser *chromo_phaser);
+    void phase_HiC_poss(ChromoPhaser *chromo_phaser);
     int load_contig_records(ChromoPhaser *chromo_phaser);
     int load_contig_blocks(ChromoPhaser *chromo_phaser);
     bool use_input_ps;

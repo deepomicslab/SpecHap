@@ -175,13 +175,85 @@ void Phaser::phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser)
                     chromo_phaser->phased->update_phasing_info();
             }
         spectral->solver();
-        //std::cout << chromo_phaser->phased->phased_blk_count << std::endl;
     }
-
+        //std::cout << chromo_phaser->phased->phased_blk_count << std::endl;
     if (op == op_mode::HIC)
-        spectral->hic_poss_solver();
+    {
+        phase_HiC_poss(chromo_phaser);
+    }
 }
 
+
+void Phaser::phase_HiC_poss(ChromoPhaser *chromo_phaser)
+{
+    std::unordered_map<uint, std::set<uint>> connected_comps = spectral->load_hic_poss_info();
+    for (auto i : connected_comps)
+    {
+        std::set<uint> &connected_comp = i.second;
+        int nblocks = connected_comp.size();
+        if (nblocks == 1)
+            continue;
+
+        int count = 0;
+        //split into window again
+        if (nblocks > chromo_phaser->phased->intended_window_length + chromo_phaser->phased->intended_window_length + chromo_phaser->phased->overlap_length)
+        {
+            chromo_phaser->phased->clean();
+            count = 0;
+            //update indexing scheme
+            for (auto blk_start_id: connected_comp)
+            {
+                chromo_phaser->phased->current_window_idxes.push_back(blk_start_id);
+                chromo_phaser->phased->mat2variant_index[count] = blk_start_id;
+                ptr_ResultforSingleVariant variant =  chromo_phaser->results_for_variant[blk_start_id];
+                if (is_uninitialized(variant->block))
+                {
+                    chromo_phaser->phased->variant2mat_index[blk_start_id] = count;
+                }
+                else
+                {
+                    auto blk = variant->block.lock();
+                    for (auto _var_id : blk->variant_idxes)
+                    {
+                        chromo_phaser->phased->variant2mat_index[_var_id] = count;
+                    }   
+                }
+                count ++;
+            }
+
+            spectral->hic_poss_solver(nblocks);
+        }
+        //direct phase
+        else 
+        {
+            chromo_phaser->phased->clean();
+            count = 0;
+            //update indexing scheme
+            for (auto blk_start_id: connected_comp)
+            {
+                chromo_phaser->phased->current_window_idxes.push_back(blk_start_id);
+                chromo_phaser->phased->mat2variant_index[count] = blk_start_id;
+                ptr_ResultforSingleVariant variant =  chromo_phaser->results_for_variant[blk_start_id];
+                if (is_uninitialized(variant->block))
+                {
+                    chromo_phaser->phased->variant2mat_index[blk_start_id] = count;
+                }
+                else
+                {
+                    auto blk = variant->block.lock();
+                    for (auto _var_id : blk->variant_idxes)
+                    {
+                        chromo_phaser->phased->variant2mat_index[_var_id] = count;
+                    }   
+                }
+                count ++;
+            }
+
+            spectral->hic_poss_solver(nblocks);        
+        }
+    }
+    
+}
 
 void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser)
 {

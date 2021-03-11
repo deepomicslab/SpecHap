@@ -86,8 +86,8 @@ public:
     void clean();
     void reset();
     void solver();
-    void hic_poss_solver();
-    void load_hic_poss_info();
+    void hic_poss_solver(int nblock);
+    std::unordered_map<uint, std::set<uint>> load_hic_poss_info();
     void solver_recursive();
     void solver_subroutine(int block_count, std::map<uint, int> &subroutine_map, std::map<uint, uint>& subroutine_blk_start, std::map<uint,double> &block_qualities);
     inline void set_chromo_phaser(ChromoPhaser *chromo_phaser)
@@ -110,7 +110,7 @@ public:
 private:
     void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_graph);
-    void add_snp_edge_hic(ViewMap &weighted_graph, std::set<uint> &var_idx, std::map<uint, uint> &var_idx_map);
+    void add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph & sub_variant_graph, std::map<uint, int> & subroutine_map, std::map<uint, uint> & subroutine_blk_start, std::map<uint,double> &block_qualities);
     void add_snp_edge_barcode_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph & sub_variant_graph, std::map<uint, int> & subroutine_map, std::map<uint, uint> & subroutine_blk_start);
     void add_snp_edge_tgs();
@@ -141,7 +141,7 @@ private:
 
     void call_haplotype(GMatrix &adj_mat, const std::set<uint> &variant_idx_mat, int &block_count, std::map<uint, int> &subroutine_map, std::map<uint, uint> &subroutine_blk_start, bool sub, std::map<uint, double> &block_quality);
     //void call_haplotype_hic_link(const Eigen::MatrixBase<Derived> &adj_mat, HapStruct &phased_blocks, const unsigned int &idx);
-    void load_hic_linker();
+    void load_hic_linker(int nblock);
     void cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, GMatrix *weight, CMatrix *count, VariantGraph *variant_graph);
     void merge_hap_block();
     template <typename Derived>
@@ -293,14 +293,17 @@ private:
     inline void make_set(uint v, std::vector<uint> &parent, std::vector<uint> &size) 
     {
         parent[v] = v;
-        size[v] = 0;
+        size[v] = 1;
     }
 
     inline int find_set(uint v, std::vector<uint> &parent) 
     {
-        if (v == parent[v])
-            return v;
-        return parent[v] = find_set(parent[v], parent);
+        if(parent[parent[v]] != parent[v])
+            parent[v]= find_set(parent[v], parent);
+        return parent[v];
+        //if (v == parent[v])
+        //    return v;
+        //return parent[v] = find_set(parent[v], parent);
     }
 
     void union_sets(uint a, uint b, std::vector<uint> &parent, std::vector<uint> &size) 

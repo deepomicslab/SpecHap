@@ -34,6 +34,11 @@ void print_to_file(BarcodeLinkers *barcodes, const char *filename)
     }
 }
 
+void print_map(std::unordered_map<uint, uint> &buff, uint key)
+{
+    std::cout << buff[key] << std::endl;
+}
+
 void print(double ** matrix, int n)
 {
     int i, j;
@@ -402,7 +407,7 @@ void Spectral::add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_gra
     //std::cout << weighted_graph << std::endl;
 }
 
-void Spectral::add_snp_edge_hic(ViewMap &weighted_graph, std::set<uint> &var_idx, std::map<uint, uint> &var_idx_map)
+void Spectral::add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph)
 {
     for (auto it = this->hic_linker_container.linker.begin(); it != this->hic_linker_container.linker.end(); it++)
     {
@@ -535,7 +540,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
 void Spectral::solver_recursive()
 {
     std::unordered_set<uint> met_idx;
-    load_hic_linker();
+    //load_hic_linker();
     Eigen::Ref<GMatrix> adj_mat = adjacency_matrix;
     uint mat_idx;
 
@@ -1455,160 +1460,8 @@ void Spectral::split_phased_blk(uint idx)
     this->phasing_window->split_after_phasing(idx, split_var_idx);
 }
 
-void Spectral::load_hic_poss_info()
+std::unordered_map<uint, std::set<uint>> Spectral::load_hic_poss_info()
 {
-    this->clean();
-    phasing_window->clear();
-    std::set<uint>var_idx;
-    std::map<uint, uint> var_idx_map;
-    for (auto &linker : hic_linker_container.linker)
-    {
-        for (auto &info : linker.second.hic_info)
-        {
-            ptr_ResultforSingleVariant variant =  this->chromo_phaser->results_for_variant[info.first];
-            if (is_uninitialized(variant->block))
-            {
-                var_idx.insert(info.first);
-                var_idx_map[info.first] = info.first;
-            }
-            else
-            {
-                //in a blk, but not phased
-                if (!variant->variant_phased())
-                    continue;
-                else
-                {
-                    uint start_var_idx = variant->block.lock()->start_variant_idx;
-                    var_idx.insert(start_var_idx);
-                    var_idx_map[info.first] = start_var_idx;
-                }
-            }
-        }
-    }
-
-    std::unordered_map<uint, uint> var2idx;
-    std::unordered_map<uint, uint> idx2var;
-    int count = 0;
-
-    for (auto &i : var_idx)
-    {
-        idx2var[count++] = i;
-        this->phasing_window->current_window_idxes.push_back(i);
-        this->phasing_window->mat2variant_index[count++] = i;
-    }
-    count = 0;
-    for (auto &i : var_idx_map)
-    {
-        if (i.first == i.second)
-            var2idx[i.first] = count++;
-            //this->phasing_window->variant2mat_index[i.first] = count++;
-        else
-        {
-            if (var2idx.count(i.second) == 0)
-            {   
-                var2idx[i.second] = count;
-                var2idx[i.first] = count++;
-                // this->phasing_window->variant2mat_index[i.second] = count;
-                // this->phasing_window->variant2mat_index[i.first] = count++;
-            }
-            else
-            {
-                var2idx[i.first] = var2idx[i.second];
-                //this->phasing_window->variant2mat_index[i.first] = this->phasing_window->variant2mat_index[i.second];
-            }
-        }
-    }
-
-    // now use disjoint set to find connected component
-
-    
-    std::vector<uint> parent;
-    std::vector<uint> size;
-    
-
-    parent.resize(var_idx.size());
-    size.resize(var_idx.size());
-    for (int i = 0; i < n; i++)
-        this->make_set(i, parent, size);
-
-    for (auto &linker : hic_linker_container.linker)
-    {
-        uint linker_start = this->phasing_window->variant2mat_index[linker.second.start_var_idx];
-        for (auto &info: linker.second.hic_info)
-        {
-            uint linker_idx = this->phasing_window->variant2mat_index[info.first];
-            if (linker_idx == linker_start)
-                continue;
-            if (this->find_set(linker_start, parent) != this->find_set(linker_idx, parent))
-                this->union_sets(linker_start, linker_idx, parent, size);
-        }
-    }
-
-    std::set<uint> comps_ids;
-    std::unordered_map<int, std::set<int>> comps;
-    for (int i = 0; i < n; i++)
-    {
-        if (comps.count(parent[i]) == 0)
-        {
-            comps[parent[i]] = std::set<int>();
-            comps_ids.insert(parent[i]);
-        }
-        comps[parent[i]].insert(i);
-    }
-
-    for (auto comp_id : comps_ids)
-    {
-        auto &comp = comps[comp_id];
-        uint nblocks = comp.size();
-        if (nblocks == 1)
-            continue;
-        
-        this->variant_count = nblocks;
-        this->n = 2 * this->variant_count;
-        this->raw_graph = new double[n * n];
-        this->raw_count = new int [n * n];
-        this->variant_graph.reset(variant_count);
-        for (unsigned int i = 0; i < n * n; i++)
-        {
-            this->raw_graph[i] = 0.0;
-            this->raw_count[i] = 0;
-        }
-        ViewMap weighed_graph(raw_graph, n, n);
-        CViewMap count_graph(raw_count, n, n);
-        add_snp_edge_hic(weighed_graph, var_idx, var_idx_map);
-        cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
-    }
-    
-}
-
-
-void Spectral::load_hic_linker()
-{
-    // variant_count = curr_window_block_count
-    this->variant_count = phasing_window->curr_window_block_count();
-    // start_variant_idx = starting_block's start_variant_idx
-    // end_variant_idx_overlap = last block's start_variant_idx
-    this->clean();
-    this->n = 2 * variant_count;
-    this->variant_graph.reset(variant_count);
-    this->raw_graph = new double[n * n];
-    this->raw_count = new int[n * n];
-
-    for (unsigned int i = 0; i < n * n; i++)
-    {
-        this->raw_graph[i] = 0.0;
-        this->raw_count[i] = 0;
-    }
-    ViewMap weighed_graph(raw_graph, n, n);
-    CViewMap count_graph(raw_count, n, n);
-    //add_snp_edge_hic(weighed_graph);
-    cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
-}
-
-
-void Spectral::hic_poss_solver()
-{
-    // now we want to find connected component by hic poss info
     std::set<uint>var_idx;
     std::map<uint, uint> var_idx_map;
     for (auto &linker : hic_linker_container.linker)
@@ -1626,41 +1479,25 @@ void Spectral::hic_poss_solver()
                 uint start_var_idx = variant->block.lock()->start_variant_idx;
                 var_idx.insert(start_var_idx);
                 var_idx_map[info.first] = start_var_idx;
-                
             }
         }
     }
 
     std::unordered_map<uint, uint> var2idx;
     std::unordered_map<uint, uint> idx2var;
+    std::unordered_map<uint, uint> start_var2idx;
     int count = 0;
-
+    
     for (auto &i : var_idx)
     {
-        idx2var[count++] = i;
+        idx2var[count] = i;
+        start_var2idx[i] = count++;
     }
 
     count = 0;
     for (auto &i : var_idx_map)
     {
-        if (i.first == i.second)
-            var2idx[i.first] = count++;
-            //this->phasing_window->variant2mat_index[i.first] = count++;
-        else
-        {
-            if (var2idx.count(i.second) == 0)
-            {   
-                var2idx[i.second] = count;
-                var2idx[i.first] = count++;
-                // this->phasing_window->variant2mat_index[i.second] = count;
-                // this->phasing_window->variant2mat_index[i.first] = count++;
-            }
-            else
-            {
-                var2idx[i.first] = var2idx[i.second];
-                //this->phasing_window->variant2mat_index[i.first] = this->phasing_window->variant2mat_index[i.second];
-            }
-        }
+        var2idx[i.first] = start_var2idx[i.second];
     }
 
     // now use disjoint set to find connected component
@@ -1670,7 +1507,7 @@ void Spectral::hic_poss_solver()
 
     parent.resize(var_idx.size());
     size.resize(var_idx.size());
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < var_idx.size(); i++)
         this->make_set(i, parent, size);
 
     for (auto &linker : hic_linker_container.linker)
@@ -1687,121 +1524,100 @@ void Spectral::hic_poss_solver()
     }
 
     std::set<uint> comps_ids;
-    std::unordered_map<int, std::set<int>> comps;
-    for (int i = 0; i < n; i++)
+    std::unordered_map<uint, std::set<uint>> comps;
+    for (int i = 0; i < var_idx.size(); i++)
     {
         if (comps.count(parent[i]) == 0)
         {
-            comps[parent[i]] = std::set<int>();
+            comps[parent[i]] = std::set<uint>();
             comps_ids.insert(parent[i]);
         }
-        comps[parent[i]].insert(i);
+        comps[parent[i]].insert(idx2var[i]);
     }
+    return comps;
+}
 
 
-    // now for each connected comp
+void Spectral::load_hic_linker(int nblock)
+{
+    // variant_count = curr_window_block_count
+    
+    // start_variant_idx = starting_block's start_variant_idx
+    // end_variant_idx_overlap = last block's start_variant_idx
+    this->clean();
+    this->variant_count = nblock;
+    this->n = 2 * variant_count;
+    this->variant_graph.reset(variant_count);
+    this->raw_graph = new double[n * n];
+    this->raw_count = new int[n * n];
 
-    for (auto comp_id : comps_ids)
+    for (unsigned int i = 0; i < n * n; i++)
     {
-        auto &comp = comps[comp_id];
-        uint nblocks = comp.size();
-        if (nblocks == 1)
-            continue;
+        this->raw_graph[i] = 0.0;
+        this->raw_count[i] = 0;
+    }
+    ViewMap weighed_graph(raw_graph, n, n);
+    CViewMap count_graph(raw_count, n, n);
+    add_snp_edge_hic(weighed_graph, count_graph);
+    cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
+}
 
-        this->clean();
-        phasing_window->clear();
-        //update phasing window for connected comp
-        count = 0;
-        for (auto id : comp)
-        {
-            uint var_id = idx2var[id];
-            this->phasing_window->current_window_idxes.push_back(var_id);
-            this->phasing_window->mat2variant_index[count] = var_id;
-            ptr_ResultforSingleVariant variant =  this->chromo_phaser->results_for_variant[var_id];
-            if (is_uninitialized(variant->block))
-            {
-                this->phasing_window->variant2mat_index[var_id] = count;
-            }
-            else
-            {
-                //in a blk, but not phased
-                
-                auto blk = variant->block.lock();
-                for (auto _var_id : blk->variant_idxes)
-                {
-                    this->phasing_window->variant2mat_index[_var_id] = count;
-                }
-                
-            }
-            count ++;
-        }
 
+void Spectral::hic_poss_solver(int nblock)
+{
+  
+    load_hic_linker(nblock);
         //main driven code 
-        this->variant_count = nblocks;
-        this->n = 2 * this->variant_count;
-        this->raw_graph = new double[n * n];
-        this->raw_count = new int [n * n];
-        this->variant_graph.reset(variant_count);
-        for (unsigned int i = 0; i < n * n; i++)
-        {
-            this->raw_graph[i] = 0.0;
-            this->raw_count[i] = 0;
-        }
-        ViewMap weighed_graph(raw_graph, n, n);
-        CViewMap count_graph(raw_count, n, n);
-        add_snp_edge_hic(weighed_graph, var_idx, var_idx_map);
-        cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
     
 
-        Eigen::Ref<GMatrix> adj_mat = adjacency_matrix;
-        uint mat_idx;
-
+    Eigen::Ref<GMatrix> adj_mat = adjacency_matrix;
+    uint mat_idx;
         //for each block (variant) in phasing window
-        std::unordered_set<uint> met_idx;
-        for (auto i : phasing_window->current_window_idxes)
-        {
-            mat_idx = phasing_window->var_idx2mat_idx(i);
-            if (met_idx.find(mat_idx) == met_idx.end())
-                met_idx.insert(mat_idx);
-            else
-                continue;
-            // variant inside phasing block
-            if (!variant_graph.contain(mat_idx))
-                continue;
+    std::unordered_set<uint> met_idx;
+    for (auto i : phasing_window->current_window_idxes)
+    {
+        mat_idx = phasing_window->var_idx2mat_idx(i);
+        if (met_idx.find(mat_idx) == met_idx.end())
+            met_idx.insert(mat_idx);
+        else
+            continue;
+        // variant inside phasing block
+        if (!variant_graph.contain(mat_idx))
+            continue;
 
                 // disjointed snp, do nothing
-            else if (variant_graph.disjointedatpos(mat_idx))
+        else if (variant_graph.disjointedatpos(mat_idx))
                 //phasing_window->insert_phased_block_starting_idx(i);
-                ;
+            ;
 
                 // connected phased block
+        else
+        {
+            std::set<uint> &variants_mat = variant_graph.connected_component[mat_idx];
+            Eigen::ArrayXi index(variants_mat.size() * 2);
+            uint count = 0;
+            for (auto j = variants_mat.begin(); j != variants_mat.end(); ++j, count++)
+            {
+                index(2 * count) = 2 * (*j);
+                index(2 * count + 1) = 2 * (*j) + 1;
+            }
+            GMatrix sub_mat = mat_indexing(adj_mat, index, index);
+            if (variant_graph.fully_seperatable(mat_idx))
+                find_connected_component(sub_mat, variants_mat);
             else
             {
-                std::set<uint> &variants_mat = variant_graph.connected_component[mat_idx];
-                Eigen::ArrayXi index(variants_mat.size() * 2);
-                uint count = 0;
-                for (auto j = variants_mat.begin(); j != variants_mat.end(); ++j, count++)
-                {
-                    index(2 * count) = 2 * (*j);
-                    index(2 * count + 1) = 2 * (*j) + 1;
-                }
-                GMatrix sub_mat = mat_indexing(adj_mat, index, index);
-                if (variant_graph.fully_seperatable(mat_idx))
-                    find_connected_component(sub_mat, variants_mat);
-                else
-                {
-                    int block_count = 0;
-                    std::map<uint, int> subroutine_map;
-                    std::map<uint, uint> subroutine_blk_start;
-                    std::map<uint,double> block_qualities;
-                    call_haplotype(sub_mat, variants_mat, block_count, subroutine_map, subroutine_blk_start, false, block_qualities);
-                }
-                block_no++;
+                int block_count = 0;
+                std::map<uint, int> subroutine_map;
+                std::map<uint, uint> subroutine_blk_start;
+                std::map<uint,double> block_qualities;
+                call_haplotype(sub_mat, variants_mat, block_count, subroutine_map, subroutine_blk_start, false, block_qualities);
             }
+            block_no++;
         }
-        delete[] this->raw_graph;
-        delete[] this->raw_count;
-        this->raw_count = nullptr;
-        this->raw_graph = nullptr;
     }
+    delete[] this->raw_graph;
+    delete[] this->raw_count;
+    this->raw_count = nullptr;
+    this->raw_graph = nullptr;
 }
+

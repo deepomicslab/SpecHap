@@ -1623,15 +1623,10 @@ void Spectral::hic_poss_solver()
             }
             else
             {
-                //in a blk, but not phased
-                if (!variant->variant_phased())
-                    continue;
-                else
-                {
-                    uint start_var_idx = variant->block.lock()->start_variant_idx;
-                    var_idx.insert(start_var_idx);
-                    var_idx_map[info.first] = start_var_idx;
-                }
+                uint start_var_idx = variant->block.lock()->start_variant_idx;
+                var_idx.insert(start_var_idx);
+                var_idx_map[info.first] = start_var_idx;
+                
             }
         }
     }
@@ -1730,16 +1725,13 @@ void Spectral::hic_poss_solver()
             else
             {
                 //in a blk, but not phased
-                if (!variant->variant_phased())
-                    continue;
-                else
+                
+                auto blk = variant->block.lock();
+                for (auto _var_id : blk->variant_idxes)
                 {
-                    auto blk = variant->block.lock();
-                    for (auto _var_id : blk->variant_idxes)
-                    {
-                        this->phasing_window->variant2mat_index[_var_id] = count;
-                    }
+                    this->phasing_window->variant2mat_index[_var_id] = count;
                 }
+                
             }
             count ++;
         }

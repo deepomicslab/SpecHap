@@ -6,7 +6,7 @@ project(SpecHap)
 
 set(CMAKE_CXX_STANDARD 11)
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
-set(CMAKE_BUILD_TYPE DEBUG)
+set(CMAKE_BUILD_TYPE RELEASE)
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXX_FLAGS} -O0 -Wall -ggdb -fkeep-inline-functions")
 set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 ")
 

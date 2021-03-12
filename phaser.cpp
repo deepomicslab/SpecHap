@@ -46,7 +46,7 @@ Phaser::Phaser(std::vector<option::Option> &options)
 
     coverage = 30;  //deprecated
     max_barcode_spanning_length = 60000;    
-    recursive_limit = 15;       //deprecated
+    recursive_limit = 15;       
 
     if (options[TENX])
         frbed = new BEDReader(options[STATS].arg);
@@ -195,38 +195,17 @@ void Phaser::phase_HiC_poss(ChromoPhaser *chromo_phaser)
             continue;
 
         int count = 0;
+    
         //split into window again
-        if (nblocks > chromo_phaser->phased->intended_window_length + chromo_phaser->phased->intended_window_length + chromo_phaser->phased->overlap_length)
+        int HiC_poss_block = 300, overlap = 100;
+        if (nblocks > HiC_poss_block + overlap)
         {
-            chromo_phaser->phased->clean();
-            count = 0;
-            //update indexing scheme
-            for (auto blk_start_id: connected_comp)
-            {
-                chromo_phaser->phased->current_window_idxes.push_back(blk_start_id);
-                chromo_phaser->phased->mat2variant_index[count] = blk_start_id;
-                ptr_ResultforSingleVariant variant =  chromo_phaser->results_for_variant[blk_start_id];
-                if (is_uninitialized(variant->block))
-                {
-                    chromo_phaser->phased->variant2mat_index[blk_start_id] = count;
-                }
-                else
-                {
-                    auto blk = variant->block.lock();
-                    for (auto _var_id : blk->variant_idxes)
-                    {
-                        chromo_phaser->phased->variant2mat_index[_var_id] = count;
-                    }   
-                }
-                count ++;
-            }
-
-            spectral->hic_poss_solver(nblocks);
+            this->phase_HiC_recursive(chromo_phaser, connected_comp);  
         }
         //direct phase
         else 
         {
-            chromo_phaser->phased->clean();
+            chromo_phaser->phased->clear();
             count = 0;
             //update indexing scheme
             for (auto blk_start_id: connected_comp)
@@ -255,22 +234,141 @@ void Phaser::phase_HiC_poss(ChromoPhaser *chromo_phaser)
     
 }
 
-void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser)
+void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser, std::set<uint> &connected_comp)
 {
-    uint prev_blk_count;
-    for(int j = 0; j < recursive_limit; j++)
+    int count = 0;
+    std::unordered_map<uint, uint> var2id;
+    std::unordered_map<uint, uint> id2var;
+    std::vector<uint> prev_block_idxes;
+    std::map<uint, uint> block_idxes;
+    int HiC_poss_block = 300, overlap = 100;
+    int n_recursion = 0;
+
+    for (auto blk_start_id: connected_comp)
     {
-        prev_blk_count = chromo_phaser->get_block_count();
-        chromo_phaser->construct_phasing_window_r_initialize();
-        while (chromo_phaser->phased->rest_blk_count > 0)
-        {
-            chromo_phaser->phased->update_phasing_info();
-            spectral->clean();
-            spectral->solver_recursive();
-        }
-        if (prev_blk_count == chromo_phaser->get_block_count())
-            break;
-        prev_blk_count = chromo_phaser->get_block_count();
+        var2id[blk_start_id] = count;
+        id2var[count] = blk_start_id;    
+        block_idxes[count] = count; 
+        prev_block_idxes.push_back(count);
+        count++; 
     }
-}
+    int prev_blk_count = block_idxes.size();
+    while (n_recursion < this->recursive_limit || block_idxes.size() != prev_blk_count)
+    {
+        //now for each recurssion
+
+        int nblocks = prev_block_idxes.size();
+
+        int phased = 0, rest = nblocks;
+        uint start = 0, end = 0;
+        uint intend_start = 0;
+        uint tt = 0;
+        int current_window_size = 0;
+
+        while (rest > 0)
+        {
+            chromo_phaser->phased->clear();
+            auto i = block_idxes.find(end);
+                tt = intend_start;
+            uint count = 0;
+            //the first window
+            current_window_size = 0;
+
+            if (i == block_idxes.begin())
+            {
+                phased = 0;
+
+                if (phased + HiC_poss_block >= prev_block_idxes.size())
+                    end = prev_block_idxes.back() + 1;
+                else
+                {
+                    if (HiC_poss_block + phased + overlap >= prev_block_idxes.size())
+                        end = prev_block_idxes.back() + 1;
+                    else
+                        end = prev_block_idxes[phased + HiC_poss_block + overlap];
+                }
+                    intend_start = intend_start + HiC_poss_block + overlap;
+            }
+            else {
+            //determine true start
+
+                while ( count < overlap )
+                {
+                    count++;
+
+                    if (i == block_idxes.begin())
+                        break;
+                    i = prev(i);
+                }
+                start = i->first;
+                if (phased + HiC_poss_block - overlap >= prev_block_idxes.size())
+                    end  = prev_block_idxes.back() + 1;
+                else
+                {
+                    if (phased + HiC_poss_block >= prev_block_idxes.size())
+                        end = prev_block_idxes.back() + 1;
+                    else
+                        end = prev_block_idxes[HiC_poss_block + phased];
+                }
+                intend_start = intend_start + HiC_poss_block ;
+            }
+
+            auto it = i;
+
+            for (; it != block_idxes.end() && it->first != end; it++, current_window_size++)
+            {
+
+                uint blk_idx = id2var[it->first];
+                ptr_PhasedBlock blk = chromo_phaser->phased->blocks[blk_idx];
+                if (blk->size() == 1)
+                    if (blk->results.begin()->second->get_filter() == filter_type::POOLRESULT)
+                            continue;
+                for (auto idx : blk->variant_idxes)
+                    chromo_phaser->phased->variant2mat_index[idx] = current_window_size;
+                chromo_phaser->phased->mat2variant_index[current_window_size] = blk_idx;
+                chromo_phaser->phased->current_window_idxes.push_back(blk_idx);
+            }
+
+            phased += (end - tt);
+            rest = nblocks - phased;
+
+            //now do poss phasing 
+            spectral->hic_poss_solver(chromo_phaser->phased->current_window_idxes.size());
+
+                    //now update the index
+            for (auto it : chromo_phaser->phased->current_window_idxes)
+            {
+                        //its been phased! update index accordingly
+                if (chromo_phaser->phased->block_idxes.count(it) == 0)
+                {
+                    block_idxes.erase(var2id[it]);
+                }
+            }
+        }
+
+        //update index after the recurssion
+        std::unordered_map<uint, uint> _var2id;
+        std::unordered_map<uint, uint> _id2var;
+        std::vector<uint> _prev_block_idxes;
+        std::map<uint, uint> _block_idxes;
+
+        count = 0;
+        for (auto i : block_idxes)
+        {
+            _block_idxes[count] = count; 
+            _prev_block_idxes.push_back(count);
+            uint var = id2var[i.first];
+            _var2id[var] = count;
+            _id2var[count] = var;
+            count ++;
+        }
+        prev_blk_count = block_idxes.size();
+        prev_block_idxes = _prev_block_idxes;
+        block_idxes = _block_idxes;
+        var2id = _var2id;
+        id2var = _id2var;
+
+        n_recursion++;
+    }
+}   
 

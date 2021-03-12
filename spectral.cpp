@@ -465,10 +465,6 @@ void Spectral::add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph)
 
 void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, GMatrix *weight, CMatrix *count, VariantGraph *variant_graph)
 {
-    //for (int i = 0; i < this->n * this->n; i++)
-    //    this->raw_graph[i] = pow(10, this->raw_graph[i]);
-    double q = 0.9;
-    double beta = 0.1;
     GMatrix *ptr_adj_mat;
     CMatrix *ptr_count_mat;
     VariantGraph *ptr_var_graph;
@@ -1565,10 +1561,8 @@ void Spectral::load_hic_linker(int nblock)
 
 void Spectral::hic_poss_solver(int nblock)
 {
-  
     load_hic_linker(nblock);
         //main driven code 
-    
 
     Eigen::Ref<GMatrix> adj_mat = adjacency_matrix;
     uint mat_idx;

@@ -242,8 +242,9 @@ void Spectral::read_fragment_hic()
     while (fr->get_next_hic(fragment))
     {
         add_snp_edge(fragment, weighed_graph, count_graph);
-        if (fragment.insertion_size >= 5000 && fragment.insertion_size <= 40000000)
-            this->hic_linker_container.add_HiC_info(fragment);
+        if ( fragment.snps[0].first >= phasing_window->prev_window_start)
+            if (fragment.insertion_size >= 5000 && fragment.insertion_size <= 40000000)
+                this->hic_linker_container.add_HiC_info(fragment);
         fragment.reset();
     }
     cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);

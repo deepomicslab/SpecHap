@@ -4,7 +4,7 @@
 
 #ifndef BARCODE_EXTRACTOR_BAMREADER_H
 #define BARCODE_EXTRACTOR_BAMREADER_H
-#include <htslib/sam.h>
+#include "htslib/sam.h"
 #include <string>
 class AlignedReads
 {

@@ -95,14 +95,14 @@ public:
         //bcf_empty(record);
         //no such contig or iter not initialized
         if (iter == nullptr)
-            return -1;
+            return -1;   
         //bcf1_t *r = bcf_init();
         int status = tbx_itr_next(vcf_file, tbx_index, iter, &tmp);
         if (status < 0)
             return  status;
         status = vcf_parse1(&tmp, header, buffer);
         if (status != 0) //eof or corruption in file
-            return status;
+            return -1;
         //new contig
         if (buffer->rid != this->curr_bcf_contig)
             return -1;
@@ -149,10 +149,10 @@ public:
             int allele1 = bcf_gt_allele(ptr[1]);
             
 
-            if (allele1 == allele0)
+            if (allele1 == allele0) //homozy
             {
                 free(gt_arr);
-                return 0;
+                return 1;
             }
             if (ps_s != nullptr)
             {
@@ -167,7 +167,7 @@ public:
             
         }
         //bcf_destroy(r);
-        return status;
+        return 0;
     }
 
     inline int jump_to_contig(int contig_id)

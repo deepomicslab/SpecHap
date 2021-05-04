@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <iostream>
 #include "indexing.h"
+#include "phaser.h"
+#include "type.h"
 #include <limits>
 #include <unordered_set>
 #include <cmath>
@@ -71,13 +73,13 @@ void print_hap(ptr_PhasedBlock &block, uint idx)
 }
 
 // initialization
-Spectral::Spectral(FragmentReader *fr, BEDReader *frbed, op_mode op, double threhold, int coverage, int max_barcode_spanning_length, bool use_secondary)
-        : fr(fr), op(op), threhold(threhold), raw_graph(nullptr), raw_count(nullptr), phasing_window(nullptr), epsilon(10e-2),
-        coverage(coverage), max_barcode_spanning_length(max_barcode_spanning_length), barcode_linker_index_set(false),
+Spectral::Spectral(FragmentReader *fr, BEDReader *frbed, double threhold, int coverage, bool use_secondary)
+        : fr(fr), threhold(threhold), raw_graph(nullptr), raw_count(nullptr), phasing_window(nullptr), epsilon(10e-2),
+        coverage(coverage), barcode_linker_index_set(false),
         chromo_phaser(nullptr), barcode_linker(nullptr), frbed(frbed), use_secondary(use_secondary), q_sum(0.0), q_aver(0.0)
 {
     block_no = 1;
-    this->barcode_linker = new BarcodeLinkers(max_barcode_spanning_length);
+    this->barcode_linker = new BarcodeLinkers(MAX_BARCODE_SPANNING);
     this->region_frag_stats = new RegionFragStats();
     this->barcode_linker->regionFragStats = region_frag_stats;
 }
@@ -128,15 +130,15 @@ void Spectral::reset()
         this->raw_graph[i] = 0.0;
         this->raw_count[i] = 0;
     }
-    if (op == op_mode::TENX)
+    if (OPERATION == MODE_10X)
         read_fragment_10x();
-    else if (op == op_mode::HIC)
+    else if (OPERATION == MODE_HIC)
         read_fragment_hic();
-    else if (op == op_mode::PE)
+    else if (OPERATION == MODE_PE)
         read_fragment();
-    else if (op == op_mode::NANOPORE)
+    else if (OPERATION == MODE_NANOPORE)
         read_fragment_nanopore();
-    else if (op == op_mode::PACBIO)
+    else if (OPERATION == MODE_PACBIO)
         read_fragment_pacbio();
 }
 
@@ -639,7 +641,7 @@ void Spectral::solver()
             block_no++;
         }
     }
-    if (this->op == op_mode::TENX)
+    if (OPERATION == MODE_10X)
     {
         for (auto start_idx: this->phased_block_starts)
             barcode_aware_filter(start_idx.first);
@@ -786,7 +788,7 @@ void Spectral::solver_subroutine(int block_count, std::map<uint, int> & subrouti
     CViewMap sub_count_graph(sub_count, N, N);
     GMatrix weight_mat;
     CMatrix count_mat;
-    if (this->op == op_mode::TENX)
+    if (OPERATION == MODE_10X)
         add_snp_edge_barcode_subroutine(sub_weighed_graph, sub_count_graph, sub_variant_graph, subroutine_map, subroutine_blk_start);
     else
         add_snp_edge_subroutine(sub_weighed_graph, sub_count_graph, sub_variant_graph, subroutine_map, subroutine_blk_start, block_qualities);
@@ -1275,7 +1277,7 @@ void Spectral::call_haplotype(GMatrix &adj_mat, const std::set<uint> &variant_id
             {
                 fiedler_idx = 2;
                 if (trivial_fiedler(vecs.col(fiedler_idx)))
-                    std::cout << "fail to solve fielder vector at \n";
+                    ;//std::cout << "fail to solve fielder vector at \n"; //failed we seperate block by doing nothing.
                 else
                     separate_connected_component(vecs.col(fiedler_idx), variant_idx_mat);
             }

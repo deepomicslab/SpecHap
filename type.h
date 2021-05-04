@@ -20,6 +20,16 @@ typedef std::pair<int, double> allele_info;
 typedef std::pair<uint, allele_info> snp_info;
 typedef std::vector<snp_info> snp_container;
 
+#define FRAG_HIC    0
+#define FRAG_10X    1
+#define FRAG_NORMAL 2
+
+#define MODE_10X        0
+#define MODE_HIC        1
+#define MODE_PE         2
+#define MODE_PACBIO     3
+#define MODE_NANOPORE   4
+#define MODE_HYBRID     5
 class Fragment
 {
 public:
@@ -27,6 +37,7 @@ public:
     Fragment(const Fragment &rhs);
     ~Fragment() = default;
     uint start, end;
+    int type = FRAG_NORMAL;               
     snp_container snps;         //<variant_idx, allele>
     std::string barcode;
     double read_qual = 0;

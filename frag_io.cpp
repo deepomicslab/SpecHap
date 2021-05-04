@@ -3,11 +3,11 @@
 //
 
 #include "frag_io.h"
+#include "type.h"
 #include <iostream>
+#include "util.h"
 
 
-//credit to Marius on stackoverflow:
-// https://stackoverflow.com/questions/236129/the-most-elegant-way-to-iterate-the-words-of-a-string
 template<class ContainerT>
 void tokenize(const std::string &str, ContainerT &tokens, const std::string &delimiters, bool trimEmpty)
 {
@@ -31,6 +31,10 @@ void tokenize(const std::string &str, ContainerT &tokens, const std::string &del
     }
 }
 
+//credit to Marius on stackoverflow:
+// https://stackoverflow.com/questions/236129/the-most-elegant-way-to-iterate-the-words-of-a-string
+
+
 FragmentReader::FragmentReader(const char *file_name)
         : window_start(0), window_end(0), nxt_window_start(0), nxt_window_set(false), intended_window_end(0)
 {
@@ -51,27 +55,6 @@ FragmentReader::~FragmentReader()
     frag_file.close();
 }
 
-op_mode FragmentReader::detect_file_type()
-{
-    std::string line;
-    std::getline(this->frag_file, line);
-    tokenize(line, this->buffer, " ", true);
-
-    op_mode op;
-    int file_type = std::stoi(this->buffer[2]);
-
-    if (file_type > 4)
-        op = op_mode::PE;
-    else if (file_type == 2) //10X
-        op = op_mode::TENX;
-    else if (file_type == 1) //HiC
-        op = op_mode::HIC;
-
-
-    this->frag_file.seekg(0, std::fstream::beg);
-
-    return op;
-}
 
 bool FragmentReader::get_next_pe(Fragment &fragment)
 {
@@ -81,6 +64,14 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         curr_pos = this->tell();
         this->frag_file.peek();
 
+        int index_idx = 2;
+        int estimated_buffer_len = 2;
+
+        if (NEW_FORMAT)
+        {
+            index_idx = 5;
+            estimated_buffer_len = 5; 
+        }
 
         std::string line;
         this->buffer.clear();
@@ -92,10 +83,25 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (token_size < 2)
-            return false;
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         int no_blx = std::stoi(this->buffer[0]);
+
+        estimated_buffer_len += no_blx * 2 + 2;
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         std::string &name = this->buffer[1];
-        uint idx_start = std::stol(this->buffer[2]) - 1;
+        uint idx_start = std::stol(this->buffer[index_idx]) - 1;
 
         //new chromosome
         if (idx_start >= curr_chr_var_count + prev_chr_var_count)
@@ -125,8 +131,8 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         uint ix;
         for (int i = 0; i < no_blx; i++)
         {
-            ix = std::stol(this->buffer[2 + 2 * i]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
-            std::string &blk = this->buffer[2 * i + 3];
+            ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
+            std::string &blk = this->buffer[2 * i + index_idx + 1];
             for (char &c : blk)
             {
                 snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual( bs_qual[bs_ix++] )));
@@ -134,6 +140,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
             }
         }
         fragment.update_start_end();
+        fragment.type = FRAG_NORMAL;
         return true;
     }
     catch (const std::ios_base::failure &e)
@@ -142,7 +149,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
     }
 }
 
-//TODO: add DM and OM tag
+
 bool FragmentReader::get_next_tenx(Fragment &fragment)
 {
     std::fstream::streampos curr_pos;
@@ -160,12 +167,32 @@ bool FragmentReader::get_next_tenx(Fragment &fragment)
             return false;
         tokenize(line, this->buffer, " ", true);
         //EOF
+  
         auto token_size = buffer.size();
         if (token_size < 2)
-            return false;
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+        int index_idx = 5;
+        int estimated_buffer_len = 5; 
+
         int no_blx = std::stoi(this->buffer[0]);
+
+        estimated_buffer_len += no_blx * 2 + 4;
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         std::string &name = this->buffer[1];
-        int idx_start = std::stol(this->buffer[5]) - 1;
+        uint idx_start = std::stol(this->buffer[index_idx]) - 1;
+        
 
         //new chromosome
         if (idx_start >= curr_chr_var_count + prev_chr_var_count)
@@ -202,8 +229,8 @@ bool FragmentReader::get_next_tenx(Fragment &fragment)
         uint ix;
         for (int i = 0; i < no_blx; i++)
         {
-            ix = std::stol(this->buffer[5 + 2 * i]) - 1 - this->prev_chr_var_count; //0-based
-            std::string &blk = this->buffer[2 * i + 6];
+            ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based
+            std::string &blk = this->buffer[2 * i + index_idx + 1];
             for (char &c : blk)
             {
                 snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual(bs_qual[bs_ix++])));
@@ -211,6 +238,7 @@ bool FragmentReader::get_next_tenx(Fragment &fragment)
             }
         }
         fragment.update_start_end();
+        fragment.type = FRAG_10X;
         return true;
     }
     catch (const std::ios_base::failure &e)
@@ -233,11 +261,30 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
-        if (token_size < 3)
-            return false;
+        if (token_size < 2)
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+        int index_idx = 5;
+        int estimated_buffer_len = 5; 
+
         int no_blx = std::stoi(this->buffer[0]);
+
+        estimated_buffer_len += no_blx * 2 + 2;
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+
         std::string &name = this->buffer[1];
-        uint idx_start = std::stol(this->buffer[5]) - 1;
+        uint idx_start = std::stol(this->buffer[index_idx]) - 1;
         uint insertion_size = std::stol(this->buffer[4]);
         //new chromosome
         if (idx_start >= curr_chr_var_count + prev_chr_var_count)
@@ -268,8 +315,8 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
         uint ix;
         for (int i = 0; i < no_blx; i++)
         {
-            ix = std::stol(this->buffer[5 + 2 * i]) - 1 - this->prev_chr_var_count; //0-based
-            std::string &blk = this->buffer[2 * i + 6];
+            ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based
+            std::string &blk = this->buffer[2 * i + index_idx + 1];
             for (char &c : blk)
             {
                 snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual(bs_qual[bs_ix++])));
@@ -277,6 +324,7 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
             }
         }
         fragment.update_start_end();
+        fragment.type = FRAG_HIC;
         return true;
     }
     catch (const std::ios_base::failure &e)
@@ -292,7 +340,14 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
     {
         this->frag_file.peek();
         curr_pos = this->tell();
+        int index_idx = 2;
+        int estimated_buffer_len = 2;
 
+        if (NEW_FORMAT)
+        {
+            index_idx = 5;
+            estimated_buffer_len = 5; 
+        }
 
         std::string line;
 
@@ -304,8 +359,23 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (token_size < 2)
-            return false;
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         int no_blx = std::stoi(this->buffer[0]);
+
+        estimated_buffer_len += no_blx * 2 + 2;
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         std::string &name = this->buffer[1];
         uint idx_start = std::stol(this->buffer[2]) - 1;
 
@@ -350,6 +420,7 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
             }
         }
         fragment.update_start_end();
+        fragment.type = FRAG_NORMAL;
         return true;
     }
     catch (const std::ios_base::failure &e)
@@ -366,7 +437,14 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
 
         this->frag_file.peek();
         curr_pos = this->tell();
+        int index_idx = 2;
+        int estimated_buffer_len = 2;
 
+        if (NEW_FORMAT)
+        {
+            index_idx = 5;
+            estimated_buffer_len = 5; 
+        }
 
         std::string line;
 
@@ -377,9 +455,24 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        
         if (token_size < 2)
-            return false;
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         int no_blx = std::stoi(this->buffer[0]);
+        estimated_buffer_len += no_blx * 2 + 2;
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
         std::string &name = this->buffer[1];
         uint idx_start = std::stol(this->buffer[2]) - 1;
 
@@ -423,6 +516,7 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
             }
         }
         fragment.update_start_end();
+        fragment.type = FRAG_NORMAL;
         return true;
     }
     catch (const std::ios_base::failure &e)
@@ -431,30 +525,74 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
     }
 }
 
-bool FragmentReader::get_next_pacbio_newformat(Fragment &fragment)
+
+bool FragmentReader::get_next_hybrid(Fragment &fragment)
 {
     std::fstream::streampos curr_pos;
     try
     {
-
-        this->frag_file.peek();
         curr_pos = this->tell();
+        this->frag_file.peek();
 
+        int index_idx = 5;
+        int estimated_buffer_len = 5;
 
         std::string line;
-
         this->buffer.clear();
 
         if (!std::getline(this->frag_file, line))
             return false;
+
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
-        if (token_size < 2)
-            return false;
+        if (token_size < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, exit now.";
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+        int data_type = std::stoi(this->buffer[2]);
+
         int no_blx = std::stoi(this->buffer[0]);
+        if (data_type == 0)
+        {    
+            estimated_buffer_len += no_blx * 2 + 2;
+            fragment.type = FRAG_NORMAL;
+        }
+        else if (data_type == 1)  //Hi-C
+        {
+            estimated_buffer_len += no_blx * 2 + 2;
+            fragment.type = FRAG_HIC;
+        }
+        //TODO: make 10x available in hybrid mode 
+        else if (data_type == 2)
+        {
+            estimated_buffer_len += no_blx * 2 + 4;
+            fragment.type = FRAG_10X;
+            std::string message = "detected 10x fragment, which is not supported in hybrid mode: " + line ;
+            logging(std::cerr, message);
+            
+            exit(1);
+        }
+        else 
+        {
+            std::string message = "detected fragment with unrecognized data type, the line with error is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+        if (this->buffer.size() < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+
         std::string &name = this->buffer[1];
-        uint idx_start = std::stol(this->buffer[5]) - 1;
+        uint idx_start = std::stol(this->buffer[index_idx]) - 1;
 
         //new chromosome
         if (idx_start >= curr_chr_var_count + prev_chr_var_count)
@@ -462,7 +600,6 @@ bool FragmentReader::get_next_pacbio_newformat(Fragment &fragment)
             this->seek(curr_pos);
             return false;
         }
-
 
         //new phasing window
         if (idx_start >= this->window_end)
@@ -479,18 +616,17 @@ bool FragmentReader::get_next_pacbio_newformat(Fragment &fragment)
         }
 
         fragment.read_qual = std::stod(this->buffer.back()) / -10;
-
         std::string &bs_qual = this->buffer[token_size - 2];
 
         uint bs_ix = 0;
         uint ix;
         for (int i = 0; i < no_blx; i++)
         {
-            ix = std::stol(this->buffer[5 + 2 * i]) - 1 - this->prev_chr_var_count; //0-based
-            std::string &blk = this->buffer[2 * i + 6];
+            ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
+            std::string &blk = this->buffer[2 * i + index_idx + 1];
             for (char &c : blk)
             {
-                snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual(bs_qual[bs_ix++])));
+                snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual( bs_qual[bs_ix++] )));
                 fragment.insert(t);
             }
         }
@@ -502,6 +638,7 @@ bool FragmentReader::get_next_pacbio_newformat(Fragment &fragment)
         return false;
     }
 }
+
 
 BEDReader::BEDReader(const char *in)
 : tbx(nullptr), inf(nullptr), iter(nullptr)

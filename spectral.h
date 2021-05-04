@@ -17,6 +17,7 @@
 #include "tenx_util.h"
 #include "hic_util.h"
 #include "graph.h"
+#include "util.h"
 //------------------------------------------------alias----------------------------------------------
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> GMatrix;
 typedef Eigen::Map<GMatrix> ViewMap;
@@ -24,6 +25,10 @@ typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> CMatrix;
 typedef Eigen::Map<CMatrix> CViewMap;
 typedef Eigen::FullPivLU<GMatrix> denseChol;
 typedef Eigen::ArpackGeneralizedSelfAdjointEigenSolver<GMatrix , denseChol> Arpack;
+
+//----------------------------------------------------------------------------------------------------
+extern int MAX_BARCODE_SPANNING;
+extern int OPERATION;
 
 inline double cal_score(double a, double b)
 {
@@ -49,8 +54,7 @@ private:
     GMatrix adjacency_matrix;
     CMatrix count_matrix;
     uint offset;                    //offset for current phasing window
-    double threhold;                //precision, to be calculated from read depth
-    op_mode op;                         //operation mode, PE, 10X or HiC
+    double threhold;                //precision, to be calculated from read depth                         //operation mode, PE, 10X or HiC
     uint variant_count;                 //number of point
     uint start_variant_idx;
     uint end_variant_idx_intended;
@@ -82,7 +86,7 @@ private:
 
 
 public:
-    Spectral(FragmentReader *fr, BEDReader *frbed, op_mode op, double threhold, int coverage, int max_barcode_spanning_length, bool use_secondary);
+    Spectral(FragmentReader *fr, BEDReader *frbed, double threhold, int coverage, bool use_secondary);
     void clean();
     void reset();
     void solver();

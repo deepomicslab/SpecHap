@@ -85,7 +85,16 @@ With PacBio SMRT:
 ```
 extractHAIRS --pacbio 1 --bam /your/bam/file --VCF /your/vcf/file --out fragment_file --ref /reference/file
 ```
-Similarly with Nanopore, change the --pacbio into --ont
+Similarly with Nanopore, change the --pacbio into --ont  
+
+With a fragment file, you can sort it with following command, if your are phasing with 10X, Hi-C or the new-format is specified 
+```
+sort -n -k6 in.frag > sorted.frag
+```  
+If paired-ended NGS, PacBio SMRT or Oxford Nanopore is used with default format, use
+```
+sort -n -k3 in.frag > sorted.frag
+```
 
 #### Run SpecHap
 The detailed usage can be found by

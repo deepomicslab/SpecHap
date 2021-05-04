@@ -9,43 +9,40 @@
 #include "vcf_io.h"
 #include "frag_io.h"
 #include "optionparser.h"
+#include "util.h"
 
-enum optionIndex
-{
-    UNKNOWN, HELP, VCF, FRAGMENT, OUT, TENX, HIC, WINDOW_SIZE, COVERAGE, RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
-    MAX_BARCODE_SPANNING_LENGTH, WINDOW_OVERLAP, STATS, NEWFORMAT, USESECONDARY, KEEP_PHASING_INFO
-};
+extern int WINDOW_SIZE;
+extern int WINDOW_OVERLAP;
+extern int MAX_BARCODE_SPANNING;
+extern bool HYBRID;
+extern bool KEEP_PS;
+extern int MAX_HIC_INSERTION;
+extern int OPERATION;
+extern int RECURSIVE_LIMIT;
 
 class Phaser
 {
 public:
     Phaser() = default;
-    explicit Phaser(std::vector<option::Option> &options);
+    explicit Phaser(const std::string & fnvcf, const std::string & fnout, const std::string & fnfrag, const std::string &fnbed);
     ~Phaser();
     void phasing();
 
 private:
-    op_mode detect_frag_file_type(std::string file_name);
-    void sort_frag_file(std::string file_name, op_mode opMode);
+    void sort_frag_file(std::string file_name);
     double threshold;
     VCFReader *frvcf;
     VCFWriter *fwvcf;
     FragmentReader *frfrag;
     BEDReader *frbed;
-    uint window_size;
-    int overlap;
     Spectral *spectral;
-    op_mode op;
-    uint recursive_limit;
     int coverage;
-    int max_barcode_spanning_length;
     void phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser);
     void phase_HiC_recursive(ChromoPhaser *chromo_phaser, std::set<uint> &connected_comp);
     void phase_HiC_poss(ChromoPhaser *chromo_phaser);
     void update_HiC_phasing_window();
     int load_contig_records(ChromoPhaser *chromo_phaser);
     int load_contig_blocks(ChromoPhaser *chromo_phaser);
-    bool use_input_ps;
 };
 
 #endif //SPECHAP_PHASER_H

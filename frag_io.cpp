@@ -434,7 +434,6 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
     std::fstream::streampos curr_pos;
     try
     {
-
         this->frag_file.peek();
         curr_pos = this->tell();
         int index_idx = 2;

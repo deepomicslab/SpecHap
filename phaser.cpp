@@ -25,6 +25,7 @@ Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, const std::st
         frbed = new BEDReader(fnbed.data());
 
     bool use_secondary = false;
+    threshold = 1e-5;
 
     spectral = new Spectral(frfrag, frbed, threshold, coverage, use_secondary);
 }
@@ -178,7 +179,7 @@ void Phaser::phase_HiC_poss(ChromoPhaser *chromo_phaser)
         int count = 0;
     
         //split into window again
-        int HiC_poss_block = 300, overlap = 100;
+        int HiC_poss_block = WINDOW_SIZE, overlap = WINDOW_OVERLAP;
         if (nblocks > HiC_poss_block + overlap)
         {
             this->phase_HiC_recursive(chromo_phaser, connected_comp);  
@@ -222,7 +223,7 @@ void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser, std::set<uint> &co
     std::unordered_map<uint, uint> id2var;
     std::vector<uint> prev_block_idxes;
     std::map<uint, uint> block_idxes;
-    int HiC_poss_block = 300, overlap = 100;
+    int HiC_poss_block = WINDOW_SIZE, overlap = WINDOW_OVERLAP;
     int n_recursion = 0;
 
     for (auto blk_start_id: connected_comp)

@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include <cmath>
 #include <tuple>
-
+#include <ctime>
 
 void print_to_file(const char *filename, GMatrix &mat)
 {
@@ -510,6 +510,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
                 count_graph(2*i, 2*j) ++;
                 count_graph(2*i + 1, 2*j + 1) ++;
                 var_graph.add_edge(i, j, true);
+                
             }
             else if (score < 0)
             {
@@ -518,6 +519,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
                 count_graph(2*i, 2*j + 1) ++;
                 count_graph(2*i + 1, 2*j) ++;
                 var_graph.add_edge(i, j, false);
+                //var_graph.add_edge(i, j, true);
             }
 
             else
@@ -624,8 +626,8 @@ void Spectral::solver()
             GMatrix sub_mat = this->slice_submat(variants_mat);
             CMatrix sub_count = this->slice_submat(variants_mat, true);
             if (variant_graph.fully_seperatable(mat_idx))
-                find_connected_component(sub_count, variants_mat);
-            else
+                ;//find_connected_component(sub_count, variants_mat);
+            
             {
                 int block_count = 0;
                 std::map<uint, int> subroutine_map;
@@ -1228,6 +1230,7 @@ void Spectral::barcode_aware_filter(uint block_start_idx)
 template<typename Derived>
 bool Spectral::cal_fiedler_vec(int nev, const Eigen::MatrixBase<Derived> &adj_mat, GMatrix &vecs, Eigen::VectorXd &vals)
 {
+    std::clock_t c_start = std::clock();
     int size = adj_mat.cols();
     const GMatrix &D = adj_mat.colwise().sum().asDiagonal();
     const GMatrix &L = D - adj_mat;
@@ -1246,7 +1249,9 @@ bool Spectral::cal_fiedler_vec(int nev, const Eigen::MatrixBase<Derived> &adj_ma
         vals = arpack.eigenvalues();
         //std::cout << pow(size, 0.5) * vals(1) << std::endl;
     }
-
+    std::clock_t c_end = std::clock();
+    double time_elapsed_ms = 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC;
+    std::cout <<  time_elapsed_ms << "\n";
     return coverage;
 }
 

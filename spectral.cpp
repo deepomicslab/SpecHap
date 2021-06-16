@@ -1230,7 +1230,6 @@ void Spectral::barcode_aware_filter(uint block_start_idx)
 template<typename Derived>
 bool Spectral::cal_fiedler_vec(int nev, const Eigen::MatrixBase<Derived> &adj_mat, GMatrix &vecs, Eigen::VectorXd &vals)
 {
-    std::clock_t c_start = std::clock();
     int size = adj_mat.cols();
     const GMatrix &D = adj_mat.colwise().sum().asDiagonal();
     const GMatrix &L = D - adj_mat;
@@ -1249,9 +1248,7 @@ bool Spectral::cal_fiedler_vec(int nev, const Eigen::MatrixBase<Derived> &adj_ma
         vals = arpack.eigenvalues();
         //std::cout << pow(size, 0.5) * vals(1) << std::endl;
     }
-    std::clock_t c_end = std::clock();
-    double time_elapsed_ms = 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC;
-    std::cout <<  time_elapsed_ms << "\n";
+
     return coverage;
 }
 
@@ -1488,6 +1485,8 @@ std::unordered_map<uint, std::set<uint>> Spectral::load_hic_poss_info()
     {
         for (auto &info : linker.second.hic_info)
         {
+            if (info.first >= this->chromo_phaser->results_for_variant.size())
+                continue;
             ptr_ResultforSingleVariant variant =  this->chromo_phaser->results_for_variant[info.first];
             if (is_uninitialized(variant->block))
             {

@@ -18,7 +18,7 @@ Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, const std::st
     frvcf = new VCFReader(fnvcf.data());
     fwvcf = new VCFWriter(frvcf->header, fnout.data());
     frfrag = new FragmentReader(fnfrag.data());
-
+    frbed = nullptr;
     coverage = 30;  //deprecated
 
     if (OPERATION == MODE_10X)
@@ -36,7 +36,8 @@ Phaser::~Phaser()
     delete fwvcf;
     delete frfrag;
     delete spectral;
-    delete frbed;
+    if (frbed != nullptr)
+        delete frbed;
 }
 
 

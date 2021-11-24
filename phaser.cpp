@@ -119,6 +119,11 @@ void Phaser::phasing()
     {
         if (frvcf->jump_to_contig(rid) != 0)
             break;
+        if (std::find(contigs.begin(), contigs.end(), frvcf->contigs[rid]) == contigs.end()) {
+            std::string mess = " skipp " + std::string(frvcf->contigs[rid]);
+            logging(std::cerr, mess);
+            continue;
+        }
         ChromoPhaser *chromo_phaser = new ChromoPhaser(rid, frvcf->contigs[rid], WINDOW_OVERLAP, WINDOW_SIZE);
         std::string mess = "phasing haplotype for " + std::string(frvcf->contigs[rid]);
         logging(std::cerr, mess);
@@ -353,5 +358,19 @@ void Phaser::phase_HiC_recursive(ChromoPhaser *chromo_phaser, std::set<uint> &co
 
         n_recursion++;
     }
-}   
+}
+
+void Phaser::set_contigs(std::string &s) {
+    size_t pos = 0;
+    std::string token;
+    if ((pos = s.find(',')) == std::string::npos){
+        contigs.push_back(s);
+        return;
+    }
+    while ((pos = s.find(',')) != std::string::npos) {
+        token = s.substr(0, pos);
+        contigs.push_back(token);
+        s.erase(0, pos + 1);
+    }
+}
 

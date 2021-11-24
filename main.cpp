@@ -18,7 +18,7 @@ int OPERATION = MODE_PE;
 
 enum optionIndex
 {
-    UNKNOWN, HELP, VCF, FRAGMENT, OUT, TENX, HIC, _WINDOW_SIZE, COVERAGE, _RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
+    UNKNOWN,CONTIGS, HELP, VCF, FRAGMENT, OUT, TENX, HIC, _WINDOW_SIZE, COVERAGE, _RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
     _MAX_BARCODE_SPANNING_LENGTH, _WINDOW_OVERLAP, STATS, _NEWFORMAT, USESECONDARY, _KEEP_PHASING_INFO, _BASEOFFSET, _HYBRID
 };
 
@@ -59,6 +59,7 @@ struct Arg : public option::Arg
 
 const option::Descriptor usage[] =
         {
+                {CONTIGS,          0, "C", "contigs",                   Arg::Required, "\tcontigs to phasing with ',' split eg. chr1,chr2"},
                 {UNKNOWN,           0, "",  "",                       Arg::Unknown,  "Usage: "},
                 {HELP,              0, "h", "help",                   Arg::None,     "\t--help\tPrint this message and exit."},
                 {VCF,               0, "v", "vcf",                    Arg::Required, "\t-v <arg>,\t--vcf=<arg>\tSorted Heterozygous VCF File, gzipped, tbi or csi index required."},
@@ -162,6 +163,10 @@ int main(int argc, char *argv[])
     
 
     Phaser *phaser = new Phaser(invcf, out, frag, fnbed);
+    if (options[CONTIGS].arg != nullptr) {
+        std::string contigs = options[CONTIGS].arg;
+        phaser->set_contigs(contigs);
+    }
     phaser->phasing();
     delete phaser;
     return 0;

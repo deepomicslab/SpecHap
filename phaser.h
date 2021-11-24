@@ -27,8 +27,11 @@ public:
     explicit Phaser(const std::string & fnvcf, const std::string & fnout, const std::string & fnfrag, const std::string &fnbed);
     ~Phaser();
     void phasing();
+    void set_contigs(std::string& contigs);
 
 private:
+//    contigs to phase
+    std::vector<std::string> contigs;
     void sort_frag_file(std::string file_name);
     double threshold;
     VCFReader *frvcf;

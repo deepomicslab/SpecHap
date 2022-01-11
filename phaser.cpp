@@ -21,9 +21,6 @@ Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<s
             frbed = new BEDReader(fnbed.data());
         }
     }
-    for (const auto& item : fnfrags) {
-        frfrags.push_back(new FragmentReader(item.data()));
-    }
     frvcf = new VCFReader(fnvcf.data());
     fwvcf = new VCFWriter(frvcf->header, fnout.data());
 //    frfrag = new FragmentReader(fnfrag.data());

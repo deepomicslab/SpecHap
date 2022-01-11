@@ -82,7 +82,7 @@ private:
 
     std::map<uint, uint> phased_block_starts;
     std::set<uint> block_tobe_split;
-    FragmentReader *fr;             //Fragment matrix reader
+//    FragmentReader *fr;             //Fragment matrix reader
     std::vector<FragmentReader* > frs;
     BEDReader *frbed;
     HiCLinkerContainer hic_linker_container;
@@ -130,11 +130,11 @@ private:
     CMatrix slice_submat(std::set<uint> &variants_mat, bool t);
     CMatrix slice_submat(std::set<uint> &variants_mat, bool t, CMatrix &adj_mat);
     void filter_inconsistency();
-    void read_fragment_10x(int frIdx);
-    void read_fragment(int frIdx);
-    void read_fragment_hic(int frIdx);
-    void read_fragment_pacbio(int frIdx);
-    void read_fragment_nanopore(int frIdx);
+    void read_fragment_10x(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment_hic(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
     void poss_phase_error_correction(uint block_start_idx);
     void fragment_supported_flipping_score(ptr_PhasedBlock &phased_block, Fragment & fragment, int *supporting_reads_count, double *supporting_weight_count, std::map<uint, std::set<uint>> &connection_map);
     int locate_block_valid_start(const Eigen::VectorXd &vec);

@@ -12,32 +12,43 @@
 
 // TODO clarify between variant count and block count
 
-Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, const std::string &fnfrag, const std::string &fnbed)
+Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<std::string> & fnfrags, const std::string &fnbed)
 {
-    
+    for (int i = 0; i < fnfrags.size(); i++) {
+        auto item = fnfrags[i];
+        frfrags.push_back(new FragmentReader(item.data()));
+        if(OPERATIONS[i] == MODE_10X) {
+            frbed = new BEDReader(fnbed.data());
+        }
+    }
     frvcf = new VCFReader(fnvcf.data());
     fwvcf = new VCFWriter(frvcf->header, fnout.data());
-    frfrag = new FragmentReader(fnfrag.data());
+//    frfrag = new FragmentReader(fnfrag.data());
     frbed = nullptr;
     coverage = 30;  //deprecated
 
-    if (OPERATION == MODE_10X)
+    if (HAS_TENX)
         frbed = new BEDReader(fnbed.data());
 
     bool use_secondary = false;
     threshold = 1e-5;
 
-    spectral = new Spectral(frfrag, frbed, threshold, coverage, use_secondary);
+    spectral = new Spectral(frfrags, frbed, threshold, coverage, use_secondary);
 }
 
 Phaser::~Phaser()
 {
     delete frvcf;
     delete fwvcf;
-    delete frfrag;
+//    delete frfrag;
+    for (auto & item : frfrags) {
+        delete item;
+        item = nullptr;
+    }
+    frfrags.clear();
+    frfrags.shrink_to_fit();
     delete spectral;
-    if (frbed != nullptr)
-        delete frbed;
+    delete frbed;
 }
 
 
@@ -132,7 +143,10 @@ void Phaser::phasing()
         else
             load_contig_records(chromo_phaser);
         chromo_phaser->construct_phasing_window_initialize();
-        frfrag->set_prev_chr_var_count(prev_variant_count);
+        for (auto item : frfrags) {
+            item->set_prev_chr_var_count(prev_variant_count);
+        }
+//        frfrag->set_prev_chr_var_count(prev_variant_count);
         spectral->set_chromo_phaser(chromo_phaser);
         phasing_by_chrom(chromo_phaser->variant_count, chromo_phaser);
 
@@ -147,13 +161,16 @@ void Phaser::phasing()
 
 void Phaser::phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser)
 {
-    frfrag->set_curr_chr_var_count(var_count);
+    for (auto item : frfrags) {
+        item->set_curr_chr_var_count(var_count);
+    }
+//    frfrag->set_curr_chr_var_count(var_count);
 
     while (chromo_phaser->phased->rest_blk_count > 0)
     {
         if (chromo_phaser->phased->rest_blk_count > chromo_phaser->init_block_count)
             break;
-        if (OPERATION == MODE_10X)
+        if (HAS_TENX)
             chromo_phaser->phased->update_phasing_info(MAX_BARCODE_SPANNING);
         else
             {
@@ -165,7 +182,7 @@ void Phaser::phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser)
         spectral->solver();
     }
         //std::cout << chromo_phaser->phased->phased_blk_count << std::endl;
-    if (OPERATION == MODE_HIC)
+    if (HAS_HIC)
     {
         phase_HiC_poss(chromo_phaser);
     }

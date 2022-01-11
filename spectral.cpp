@@ -73,11 +73,14 @@ void print_hap(ptr_PhasedBlock &block, uint idx)
 }
 
 // initialization
-Spectral::Spectral(FragmentReader *fr, BEDReader *frbed, double threhold, int coverage, bool use_secondary)
-        : fr(fr), threhold(threhold), raw_graph(nullptr), raw_count(nullptr), phasing_window(nullptr), epsilon(10e-2),
-        coverage(coverage), barcode_linker_index_set(false),
-        chromo_phaser(nullptr), barcode_linker(nullptr), frbed(frbed), use_secondary(use_secondary), q_sum(0.0), q_aver(0.0)
+Spectral::Spectral(std::vector<FragmentReader *>& frfrags, BEDReader *frbed, double threhold, int coverage, bool use_secondary)
+        :use_secondary(use_secondary), raw_graph(nullptr), raw_count(nullptr), threhold(threhold), epsilon(10e-2),
+        coverage(coverage), q_aver(0.0),
+        q_sum(0.0), barcode_linker(nullptr), barcode_linker_index_set(false), frbed(frbed), phasing_window(nullptr), chromo_phaser(nullptr)
 {
+    for (auto item : frfrags) {
+        frs.push_back(item);
+    }
     block_no = 1;
     this->barcode_linker = new BarcodeLinkers(MAX_BARCODE_SPANNING);
     this->region_frag_stats = new RegionFragStats();
@@ -90,7 +93,9 @@ Spectral::~Spectral()
     raw_graph = nullptr;
     delete[] raw_count;
     raw_count = nullptr;
-    fr = nullptr;
+//    fr = nullptr;
+    frs.clear();
+    frs.shrink_to_fit();
     frbed = nullptr;
     delete barcode_linker;
     barcode_linker = nullptr;
@@ -120,7 +125,13 @@ void Spectral::reset()
     this->end_variant_idx_overlap = phasing_window->end;
     this->n = 2 * variant_count;
     this->q_sum = 0;
-    fr->set_window_info(start_variant_idx, end_variant_idx_overlap, end_variant_idx_intended);
+    for (auto item : frs) {
+        item->set_window_info(start_variant_idx, end_variant_idx_overlap, end_variant_idx_intended);
+    }
+    for (auto item : frs) {
+        item->set_window_info(start_variant_idx, end_variant_idx_overlap, end_variant_idx_intended);
+    }
+//    fr->set_window_info(start_variant_idx, end_variant_idx_overlap, end_variant_idx_intended);
     this->variant_graph.reset(variant_count);
     this->raw_graph = new double[n * n];
     this->raw_count = new int[n * n];
@@ -130,16 +141,20 @@ void Spectral::reset()
         this->raw_graph[i] = 0.0;
         this->raw_count[i] = 0;
     }
-    if (OPERATION == MODE_10X)
-        read_fragment_10x();
-    else if (OPERATION == MODE_HIC)
-        read_fragment_hic();
-    else if (OPERATION == MODE_PE)
-        read_fragment();
-    else if (OPERATION == MODE_NANOPORE)
-        read_fragment_nanopore();
-    else if (OPERATION == MODE_PACBIO)
-        read_fragment_pacbio();
+    this->frag_buffer.clear();
+    for (int i = 0; i < OPERATIONS.size(); i++) {
+        auto item = OPERATIONS[i];
+        if (item == MODE_10X)
+            read_fragment_10x(i);
+        else if (item == MODE_HIC)
+            read_fragment_hic(i);
+        else if (item == MODE_PE)
+            read_fragment(i);
+        else if (item == MODE_NANOPORE)
+            read_fragment_nanopore(i);
+        else if (item == MODE_PACBIO)
+            read_fragment_pacbio(i);
+    }
 }
 
 GMatrix Spectral::slice_submat(std::set<uint> &variants_mat, GMatrix &adj_mat)
@@ -197,9 +212,10 @@ CMatrix Spectral::slice_submat(std::set<uint> &variants_mat, bool t)
 }
 
 // read fragment matrix
-void Spectral::read_fragment()
+void Spectral::read_fragment(int frIdx)
 {
-    this->frag_buffer.clear();
+    auto fr = frs[frIdx];
+//    this->frag_buffer.clear();
     Fragment fragment;
     ViewMap weighed_graph(raw_graph, n, n);
     CViewMap count_graph(raw_count, n, n);
@@ -212,8 +228,9 @@ void Spectral::read_fragment()
     cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
-void Spectral::read_fragment_10x()
+void Spectral::read_fragment_10x(int frIdx)
 {
+    auto fr = frs[frIdx];
     this->region_frag_stats->clear();
     uint start_pos = 0, end_pos = 0;
     get_current_window_pos(start_pos, end_pos);
@@ -238,10 +255,11 @@ void Spectral::read_fragment_10x()
 }
 
 //TODO: only unused HiC linker should be stored
-void Spectral::read_fragment_hic()
+void Spectral::read_fragment_hic(int frIdx)
 {
+    auto fr = frs[frIdx];
     Fragment fragment;
-    this->frag_buffer.clear();
+//    this->frag_buffer.clear();
     CViewMap count_graph(raw_count, n, n);
     ViewMap weighed_graph(raw_graph, n, n);
     while (fr->get_next_hic(fragment))
@@ -256,9 +274,10 @@ void Spectral::read_fragment_hic()
     cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
-void Spectral::read_fragment_nanopore()
+void Spectral::read_fragment_nanopore(int frIdx)
 {
-    this->frag_buffer.clear();
+    auto fr = frs[frIdx];
+//    this->frag_buffer.clear();
     Fragment fragment;
     ViewMap weighed_graph(raw_graph, n, n);
     CViewMap count_graph(raw_count, n, n);
@@ -272,9 +291,10 @@ void Spectral::read_fragment_nanopore()
     cal_prob_matrix(weighed_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
-void Spectral::read_fragment_pacbio()
+void Spectral::read_fragment_pacbio(int frIdx)
 {
-    this->frag_buffer.clear();
+    auto fr = frs[frIdx];
+//    this->frag_buffer.clear();
     Fragment fragment;
     ViewMap weighed_graph(raw_graph, n, n);
     CViewMap count_graph(raw_count, n, n);
@@ -626,9 +646,8 @@ void Spectral::solver()
             GMatrix sub_mat = this->slice_submat(variants_mat);
             CMatrix sub_count = this->slice_submat(variants_mat, true);
             if (variant_graph.fully_seperatable(mat_idx))
-                ;//find_connected_component(sub_count, variants_mat);
-            
-            {
+                find_connected_component(sub_count, variants_mat);
+            else{
                 int block_count = 0;
                 std::map<uint, int> subroutine_map;
                 std::map<uint, uint> subroutine_blk_start;
@@ -647,7 +666,8 @@ void Spectral::solver()
             block_no++;
         }
     }
-    if (OPERATION == MODE_10X)
+//    TODO, if we need this
+    if (false)
     {
         for (auto start_idx: this->phased_block_starts)
             barcode_aware_filter(start_idx.first);
@@ -794,7 +814,7 @@ void Spectral::solver_subroutine(int block_count, std::map<uint, int> & subrouti
     CViewMap sub_count_graph(sub_count, N, N);
     GMatrix weight_mat;
     CMatrix count_mat;
-    if (OPERATION == MODE_10X)
+    if (HAS_TENX)
         add_snp_edge_barcode_subroutine(sub_weighed_graph, sub_count_graph, sub_variant_graph, subroutine_map, subroutine_blk_start);
     else
         add_snp_edge_subroutine(sub_weighed_graph, sub_count_graph, sub_variant_graph, subroutine_map, subroutine_blk_start, block_qualities);

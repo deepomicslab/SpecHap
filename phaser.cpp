@@ -130,7 +130,7 @@ void Phaser::phasing()
     {
         if (frvcf->jump_to_contig(rid) != 0)
             break;
-        if (std::find(contigs.begin(), contigs.end(), frvcf->contigs[rid]) == contigs.end()) {
+        if (!contigs.empty() && (std::find(contigs.begin(), contigs.end(), frvcf->contigs[rid]) == contigs.end())) {
             std::string mess = " skipp " + std::string(frvcf->contigs[rid]);
             logging(std::cerr, mess);
             continue;

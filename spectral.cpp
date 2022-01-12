@@ -887,11 +887,7 @@ void Spectral::find_connected_component_dfs(const Eigen::MatrixBase<Derived> &ad
         std::set<uint> &nxt_vars = sub_variant_graph.graph[var_idx];
 
         uint idx = phasing_window->mat_idx2var_idx(subroutine_blk_start[var_idx]);
-        //        Fixme, block_to_merge equals to starting block, this is a bug
-//        if(idx == starting_block->block_id) return;
         ptr_PhasedBlock block_to_merge = phasing_window->blocks[idx];
-        if (block_to_merge->block_id == starting_block->block_id)
-            return;
         if (adj_mat(2 * prev_var_idx, 2 * var_idx) > 0)
         {
             if (block_to_merge->size() == 1)
@@ -934,7 +930,8 @@ void Spectral::find_connected_component_dfs(const Eigen::MatrixBase<Derived> &ad
             phasing_window->mat2variant_index[phasing_window->var_idx2mat_idx(results.first)] = starting_block->start_variant_idx;
         starting_block->join_block_no_overlap(block_to_merge);
         phasing_window->mat2variant_index[subroutine_blk_start[var_idx]] = starting_block->start_variant_idx;
-        phasing_window->destroy_merged_block(idx);
+        if (idx != starting_block->start_variant_idx)
+            phasing_window->destroy_merged_block(idx);
 
         for (auto nxt_var : nxt_vars)
         {
@@ -964,11 +961,7 @@ void Spectral::find_connected_component_dfs(const Eigen::MatrixBase<Derived> &ad
         std::set<uint> &nxt_vars = this->variant_graph.graph[var_idx];
 
         uint idx = phasing_window->mat_idx2var_idx(var_idx);
-        //        Fixme, block_to_merge equals to starting block, this is a bug
-//        if(idx == starting_block->block_id) return;
         ptr_PhasedBlock block_to_merge = phasing_window->blocks[idx];
-        if (block_to_merge->block_id == starting_block->block_id)
-            return;
         if (adj_mat(2 * prev_var_idx, 2 * var_idx) > 0)
         {
             if (block_to_merge->size() == 1)
@@ -1011,7 +1004,8 @@ void Spectral::find_connected_component_dfs(const Eigen::MatrixBase<Derived> &ad
 
         starting_block->join_block_no_overlap(block_to_merge);
         phasing_window->mat2variant_index[var_idx] = starting_block->start_variant_idx;
-        phasing_window->destroy_merged_block(idx);
+        if (idx != starting_block->start_variant_idx)
+            phasing_window->destroy_merged_block(idx);
 
         for (auto nxt_var : nxt_vars)
         {
@@ -1189,7 +1183,8 @@ void Spectral::separate_connected_component(const Eigen::VectorXd &vec, const st
                 phased_blk->join_block_no_overlap(block_to_merge);
 
                 phasing_window->mat2variant_index[*it] = start_idx;
-                phasing_window->destroy_merged_block(idx);
+                if (idx != phased_blk->start_variant_idx)
+                    phasing_window->destroy_merged_block(idx);
 
             }
                 //class 2
@@ -1217,7 +1212,8 @@ void Spectral::separate_connected_component(const Eigen::VectorXd &vec, const st
                     phasing_window->mat2variant_index[phasing_window->var_idx2mat_idx(results.first)] = start_idx;
                 phased_blk->join_block_no_overlap(block_to_merge);
                 phasing_window->mat2variant_index[*it] = start_idx;
-                phasing_window->destroy_merged_block(idx);
+                if (idx != phased_blk->start_variant_idx)
+                    phasing_window->destroy_merged_block(idx);
 
             }
             else

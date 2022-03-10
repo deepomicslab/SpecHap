@@ -156,9 +156,9 @@ void Spectral::reset()
             read_fragment_pacbio(i,weighted_graph,count_graph);
     }
 //    cal prob graph
-    if (HAS_TENX){
-        add_snp_edge_barcode(weighted_graph, count_graph);
-    }
+//    if (HAS_TENX){
+//        add_snp_edge_barcode(weighted_graph, count_graph);
+//    }
     cal_prob_matrix(weighted_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
@@ -255,7 +255,7 @@ void Spectral::read_fragment_10x(int frIdx, ViewMap &weighted_graph, CViewMap &c
             //add_barcode_info(fragment, barcode_linker);
         fragment.reset();
     }
-//    add_snp_edge_barcode(weighted_graph, count_graph);
+    add_snp_edge_barcode(weighted_graph, count_graph);
 //    cal_prob_matrix(weighted_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
@@ -1003,7 +1003,7 @@ void Spectral::find_connected_component_dfs(const Eigen::MatrixBase<Derived> &ad
             phasing_window->mat2variant_index[phasing_window->var_idx2mat_idx(results.first)] = starting_block->start_variant_idx;
 
         starting_block->join_block_no_overlap(block_to_merge);
-        phasing_window->mat2variant_index[var_idx] = starting_block->start_variant_idx;
+         phasing_window->mat2variant_index[var_idx] = starting_block->start_variant_idx;
         if (idx != starting_block->start_variant_idx)
             phasing_window->destroy_merged_block(idx);
 

@@ -18,17 +18,17 @@ Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<s
         auto item = fnfrags[i];
         frfrags.push_back(new FragmentReader(item.data()));
         if(OPERATIONS[i] == MODE_10X) {
-            frbed = new BEDReader(fnbed.data());
+            frbed = new BEDReader(fnbed.c_str());
         }
     }
     frvcf = new VCFReader(fnvcf.data());
     fwvcf = new VCFWriter(frvcf->header, fnout.data());
 //    frfrag = new FragmentReader(fnfrag.data());
-    frbed = nullptr;
+//    frbed = nullptr;
     coverage = 30;  //deprecated
-
-    if (HAS_TENX)
-        frbed = new BEDReader(fnbed.data());
+//
+//    if (HAS_TENX)
+//        frbed = new BEDReader(fnbed.data());
 
     bool use_secondary = false;
     threshold = 1e-5;

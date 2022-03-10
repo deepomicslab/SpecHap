@@ -200,6 +200,10 @@ int main(int argc, char *argv[])
         }
     }
     auto *phaser = new Phaser(invcf, out, frags, fnbed);
+    if (options[CONTIGS].arg != nullptr) {
+        std::string contigs = options[CONTIGS].arg;
+        phaser->set_contigs(contigs);
+    }
     phaser->phasing();
     delete phaser;
     return 0;

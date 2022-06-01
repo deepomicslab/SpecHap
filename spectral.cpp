@@ -250,6 +250,9 @@ void Spectral::read_fragment_10x(int frIdx, ViewMap &weighted_graph, CViewMap &c
     {
         //add_snp_edge(fragment, weighed_graph);
         populate_variant_info(fragment);
+        if (fragment.start == 4294967205) {
+            int dd = 9;
+        }
         if (fragment.barcode != "NULL")
             barcode_linker->insert_barcode(fragment);
             //add_barcode_info(fragment, barcode_linker);

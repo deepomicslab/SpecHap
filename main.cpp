@@ -24,12 +24,13 @@ int RECURSIVE_LIMIT = 15;
 int OPERATION = MODE_PE;
 bool HAS_HIC;
 bool HAS_TENX;
+int SIDX;
 std::vector<int> OPERATIONS;
 
 
 enum optionIndex
 {
-    UNKNOWN, HELP,CONTIGS, VCF, FRAGMENT, OUT, TENX, HIC, _WINDOW_SIZE, COVERAGE, _RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
+    UNKNOWN, HELP,CONTIGS, VCF,IDX, FRAGMENT, OUT, TENX, HIC, _WINDOW_SIZE, COVERAGE, _RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
     _MAX_BARCODE_SPANNING_LENGTH, _WINDOW_OVERLAP, STATS, _NEWFORMAT, USESECONDARY, _KEEP_PHASING_INFO, _BASEOFFSET, _HYBRID,PROTOCOLS
 };
 
@@ -89,6 +90,8 @@ const option::Descriptor usage[] =
                 {_NEWFORMAT,        0, "", "new_format",              Arg::None,     "\t--new_format\tSpecified when using new_format with extractHair"},
                 {_BASEOFFSET,       0, "", "base_offset",             Arg::Numeric,  "\t--base_offset\tQuality of set for read base, default is 33."},
                 {_KEEP_PHASING_INFO,0, "", "keep_phasing_info",       Arg::None,     "\t--keep_phasing_info\tSpecified when trying to keep previous phasing info"},
+                {IDX,0, "", "idx",       Arg::Numeric,     "\t--idx\tSample idx in vcf file"},
+
                 {0,           0,   0,          0,               0,   0 }
         };
 
@@ -150,7 +153,8 @@ int main(int argc, char *argv[])
         WINDOW_OVERLAP = int(atoi(options[_WINDOW_OVERLAP].arg));
     if (options[_WINDOW_SIZE].arg != nullptr)
         WINDOW_SIZE = int(atoi(options[_WINDOW_SIZE].arg));
-
+    if (options[IDX].arg != nullptr)
+        SIDX = int(atoi(options[IDX].arg));
     std::string fnbed; 
 //    if (options[TENX])
 //    {

@@ -12,8 +12,9 @@
 #include <string>
 #include "htslib/tbx.h"
 #include "results.h"
-
+extern int SIDX;
 typedef std::map<filter_type , std::string> filter_map_t;
+//const int DOT_PS = 2147483648;
 
 enum format_n{GT, PS};
 class VCFReader
@@ -122,20 +123,20 @@ public:
         nps = bcf_get_format_int32(header ,buffer, "PS", &ps_s, &ps);
         buffer->qual == NAN ? result->qual = 40 : result->qual = buffer->qual;
         result->pos = buffer->pos;
-        dps == nullptr ? result->dp = 30 : result->dp = dps[0];
-        afs == nullptr ? result->af = 0.5 : result->af = afs[0];
-        ps_s == nullptr ? result->ps = 0: result->ps = ps_s[0];
+        dps == nullptr ? result->dp = 30 : result->dp = dps[SIDX];
+        afs == nullptr ? result->af = 0.5 : result->af = afs[SIDX];
+        ps_s == nullptr ? result->ps = 0: result->ps = ps_s[SIDX];
         if (ads != nullptr)
         {
-            if (nad == 2)
+            if (nad % 2 == 0)
             {
-                result->ad0 = ads[0];
-                result->ad1 = ads[1];
+                result->ad0 = ads[2*SIDX];
+                result->ad1 = ads[2*SIDX+1];
             }
-            if (nad == 3)
+            if (nad % 3 == 0)
             {
-                result->ad0 = ads[1];
-                result->ad1 = ads[2];
+                result->ad0 = ads[2*SIDX+1];
+                result->ad1 = ads[2*SIDX+2];
             }
         }
         free(dps); free(ads); free(ps_s); free(afs);
@@ -145,8 +146,8 @@ public:
             int32_t *gt_arr = nullptr, ngt_arr = 0;
             bcf_get_genotypes(header, buffer, &gt_arr, &ngt_arr);
             int32_t *ptr = gt_arr;
-            int allele0 = bcf_gt_allele(ptr[0]);
-            int allele1 = bcf_gt_allele(ptr[1]);
+            int allele0 = bcf_gt_allele(ptr[2*SIDX]);
+            int allele1 = bcf_gt_allele(ptr[2*SIDX+1]);
             
 
             if (allele1 == allele0) //homozy
@@ -202,7 +203,7 @@ private:
                 {filter_type::TENX_QUAL_FILTER, "TENX_QUAL_FILTER"},
                 {filter_type ::TENX_RESCUED_MOLECUE_HIGH_DIVERSITY, "TENX_RESCUED_MOLECUE_HIGH_DIVERSITY"}
         };
-    const int ngt = 2;
+    int ngt;
     int *gt;
 
 private:

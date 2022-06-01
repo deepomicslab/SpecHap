@@ -389,5 +389,6 @@ void Phaser::set_contigs(std::string &s) {
         contigs.push_back(token);
         s.erase(0, pos + 1);
     }
+    contigs.push_back(s);
 }
 

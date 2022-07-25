@@ -86,8 +86,8 @@ int Phaser::load_contig_blocks(ChromoPhaser *chromo_phaser)
         int status = this->frvcf->get_next_record_contig(result, true);
         if (status < 0) //eof, new chromosome 
             break;
-        else if (status > 0) //homo 
-            continue;
+//        else if (status > 0) //homo
+//            continue;
         chromo_phaser->results_for_variant.push_back(result);
     }
 
@@ -130,11 +130,7 @@ void Phaser::phasing()
     {
         if (frvcf->jump_to_contig(rid) != 0)
             break;
-        if (!contigs.empty() && (std::find(contigs.begin(), contigs.end(), frvcf->contigs[rid]) == contigs.end())) {
-            std::string mess = " skipp " + std::string(frvcf->contigs[rid]);
-            logging(std::cerr, mess);
-            continue;
-        }
+
         ChromoPhaser *chromo_phaser = new ChromoPhaser(rid, frvcf->contigs[rid], WINDOW_OVERLAP, WINDOW_SIZE);
         std::string mess = "phasing haplotype for " + std::string(frvcf->contigs[rid]);
         logging(std::cerr, mess);
@@ -148,9 +144,19 @@ void Phaser::phasing()
         }
 //        frfrag->set_prev_chr_var_count(prev_variant_count);
         spectral->set_chromo_phaser(chromo_phaser);
-        phasing_by_chrom(chromo_phaser->variant_count, chromo_phaser);
+        if (!contigs.empty() && (std::find(contigs.begin(), contigs.end(), frvcf->contigs[rid]) == contigs.end())) {
+            std::string mess = " skipp " + std::string(frvcf->contigs[rid]);
+            logging(std::cerr, mess);
+//            continue;
+//            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf);
+//            prev_variant_count += chromo_phaser->variant_count;
+//            spectral->release_chromo_phaser();
+//            delete chromo_phaser;
+        } else {
+            phasing_by_chrom(chromo_phaser->variant_count, chromo_phaser);
+            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf);
+        }
 
-        fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf);
         //write vcf
         prev_variant_count += chromo_phaser->variant_count;
         spectral->release_chromo_phaser();

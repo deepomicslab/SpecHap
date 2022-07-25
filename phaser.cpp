@@ -61,8 +61,8 @@ int Phaser::load_contig_records(ChromoPhaser *chromo_phaser)
         int status = this->frvcf->get_next_record_contig(result, false);
         if (status < 0)
             break;
-        else if (status > 0)
-            continue;
+//        else if (status > 0)
+//            continue;
         chromo_phaser->results_for_variant.push_back(result);
     }
 

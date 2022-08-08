@@ -143,17 +143,21 @@ void Spectral::reset()
     ViewMap weighted_graph(raw_graph, n, n);
     CViewMap count_graph(raw_count, n, n);
     for (int i = 0; i < OPERATIONS.size(); i++) {
+        double w = 1;
+        if (i == 1) {
+            w = 0.5;
+        }
         auto item = OPERATIONS[i];
         if (item == MODE_10X)
             read_fragment_10x(i,weighted_graph,count_graph);
         else if (item == MODE_HIC)
             read_fragment_hic(i,weighted_graph,count_graph);
         else if (item == MODE_PE)
-            read_fragment(i,weighted_graph,count_graph);
+            read_fragment(i,weighted_graph,count_graph, w);
         else if (item == MODE_NANOPORE)
             read_fragment_nanopore(i,weighted_graph,count_graph);
         else if (item == MODE_PACBIO)
-            read_fragment_pacbio(i,weighted_graph,count_graph);
+            read_fragment_pacbio(i,weighted_graph,count_graph, w);
     }
 //    cal prob graph
 //    if (HAS_TENX){
@@ -217,7 +221,7 @@ CMatrix Spectral::slice_submat(std::set<uint> &variants_mat, bool t)
 }
 
 // read fragment matrix
-void Spectral::read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph)
+void Spectral::read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w)
 {
     auto fr = frs[frIdx];
 //    this->frag_buffer.clear();
@@ -226,7 +230,7 @@ void Spectral::read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count
 //    CViewMap count_graph(raw_count, n, n);
     while (fr->get_next_pe(fragment))
     {
-        add_snp_edge(fragment, weighted_graph, count_graph);
+        add_snp_edge(fragment, weighted_graph, count_graph, w);
         this->frag_buffer.push_back(fragment);
         fragment.reset();
     }
@@ -272,7 +276,7 @@ void Spectral::read_fragment_hic(int frIdx, ViewMap &weighted_graph, CViewMap &c
 //    ViewMap weighed_graph(raw_graph, n, n);
     while (fr->get_next_hic(fragment))
     {
-        add_snp_edge(fragment, weighted_graph, count_graph);
+        add_snp_edge(fragment, weighted_graph, count_graph,1);
         this->frag_buffer.push_back(fragment);
         if ( fragment.snps[0].first >= phasing_window->prev_window_start)
             if (fragment.insertion_size >= 5000 && fragment.insertion_size <= 40000000)
@@ -291,7 +295,7 @@ void Spectral::read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewM
 //    CViewMap count_graph(raw_count, n, n);
     while (fr->get_next_nanopore(fragment))
     {
-        add_snp_edge(fragment, weighted_graph, count_graph);
+        add_snp_edge(fragment, weighted_graph, count_graph,1);
         this->frag_buffer.push_back(fragment);
         fragment.reset();
     }
@@ -299,7 +303,7 @@ void Spectral::read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewM
 //    cal_prob_matrix(weighted_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
-void Spectral::read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph)
+void Spectral::read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w)
 {
     auto fr = frs[frIdx];
 //    this->frag_buffer.clear();
@@ -308,7 +312,7 @@ void Spectral::read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap
 //    CViewMap count_graph(raw_count, n, n);
     while (fr->get_next_pacbio(fragment))
     {
-        add_snp_edge(fragment, weighted_graph, count_graph);
+        add_snp_edge(fragment, weighted_graph, count_graph,w);
         this->frag_buffer.push_back(fragment);
         fragment.reset();
     }
@@ -316,7 +320,7 @@ void Spectral::read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap
 }
 
 // aid function
-void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph)
+void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w)
 {
     if (fragment.snps.empty())
         return;
@@ -326,6 +330,9 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
     for (auto &i : fragment.snps) {
         if (!phasing_window->in_range(i.first))
             continue;
+        if (i.first == 246583 || i.first == 246584 || i.first == 246585) {
+            int tmp =33;
+        }
         auto a = this->phasing_window->var_idx2mat_idx(i.first);
         if (a < 0 or a >= this->variant_count)
             continue;
@@ -370,10 +377,10 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
             //count_graph(2 * a, 2 * b + connection) ++;
             //count_graph(2 * a + 1, 2 * b + 1 - connection) ++;
 
-            weighted_graph(2*a, 2*b) += P_H1;
-            weighted_graph(2*a + 1, 2*b + 1) += P_H1;
-            weighted_graph(2*a, 2*b + 1) += P_H2;
-            weighted_graph(2*a + 1, 2*b) += P_H2;
+            weighted_graph(2*a, 2*b) += P_H1*w;
+            weighted_graph(2*a + 1, 2*b + 1) += P_H1*w;
+            weighted_graph(2*a, 2*b + 1) += P_H2*w;
+            weighted_graph(2*a + 1, 2*b) += P_H2*w;
         }
     }
 }
@@ -530,6 +537,8 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
                 continue;
             //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
             //the connection provides no sufficient information for phasing
+            auto tm1 = weighted_graph(2 * i, 2*j);
+            auto tm3 = weighted_graph(2*i, 2*j+1);
             double score = weighted_graph(2 * i, 2*j) - weighted_graph(2*i, 2*j+1);
             if (score > 0)
             {
@@ -763,7 +772,7 @@ void Spectral::add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &su
                 block_supporting_likelyhood[blk_idx] = std::make_pair(0.0, 0.0);
 
             if ((i.second.first == 0 && blk->results[i.first]->is_REF()) ||
-                (i.second.first == 1 && blk->results[i.first]->is_ALT())) {
+                (i.second.first != 1 && blk->results[i.first]->is_ALT())) {
                 block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
                 block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
             } else {
@@ -1147,6 +1156,8 @@ void Spectral::separate_connected_component(const Eigen::VectorXd &vec, const st
         idx = phasing_window->mat_idx2var_idx(*it);
         ptr_PhasedBlock block_to_merge = phasing_window->blocks[idx];
         //shall not use field with zero value
+        auto tmp2 = abs(vec(2*i));
+        auto tmp3 = abs(vec(2*i+1));
         if (abs(vec(2*i)) < threhold || abs(vec(2*i+1)) < threhold)
         {
             if (block_to_merge->size() == 1)

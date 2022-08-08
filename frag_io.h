@@ -36,7 +36,10 @@ private:
     inline std::streampos tell() { return this->frag_file.tellg(); }
     inline void seek(std::streampos pos) { this->frag_file.seekg(pos); }
     inline void get_chr(std::string &name) {}
-    inline double cal_base_qual(char & qual) {return  1 - pow(0.1, double(qual - BASE_OFFSET) / 10);}
+    inline double cal_base_qual(char & qual) {
+        auto v = 1 - pow(0.1, double(qual - BASE_OFFSET) / 10);
+        return  v;
+    }
 
 public:
     explicit FragmentReader(const char *file_name);

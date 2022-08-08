@@ -123,6 +123,9 @@ public:
         nps = bcf_get_format_int32(header ,buffer, "PS", &ps_s, &ps);
         buffer->qual == NAN ? result->qual = 40 : result->qual = buffer->qual;
         result->pos = buffer->pos;
+        if (buffer->pos == 126330351) {
+            int tmp = 33;
+        }
         dps == nullptr ? result->dp = 30 : result->dp = dps[SIDX];
         afs == nullptr ? result->af = 0.5 : result->af = afs[SIDX];
         ps_s == nullptr ? result->ps = 0: result->ps = ps_s[SIDX];
@@ -139,7 +142,6 @@ public:
                 result->ad1 = ads[2*SIDX+2];
             }
         }
-        free(dps); free(ads); free(ps_s); free(afs);
 
         if (use_gt)
         {   
@@ -157,16 +159,25 @@ public:
             }
             if (ps_s != nullptr)
             {
-                if (allele0 == 0)
-                    result->set_hap_0();
-                else if (allele0 == 1)
-                    result->set_hap_1();
+                if (allele0 == 2 || allele1 == 2) {
+                    if (allele0 == 0 || allele0 == 1)
+                        result->set_hap_0();
+                    else
+                        result->set_hap_1();
+                } else {
+                    if (allele0 == 0)
+                        result->set_hap_0();
+                    else if (allele0 == 1)
+                        result->set_hap_1();
+                }
                 result->set_phased();
                 //std::cout<< allele0 << ";" << allele1 << std::endl;
             }
             free(gt_arr);
             
         }
+        free(dps); free(ads); free(ps_s); free(afs);
+
         //bcf_destroy(r);
         return 0;
     }

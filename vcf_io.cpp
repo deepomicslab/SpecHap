@@ -218,6 +218,9 @@ VCFWriter::~VCFWriter()
 
 void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resultforSingleVariant, const unsigned int blk_no)
 {
+    if (record->pos == 126330351) {
+        int tmp = 33;
+    }
     const char * filter = filter_map.find(resultforSingleVariant->get_filter())->second.data();
     int ref;
     int alt;
@@ -228,12 +231,14 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     int allele1 = bcf_gt_allele(ptr[2*SIDX+1]);
     int temp = bcf_alleles2gt(allele0, allele1);;
     bcf_gt2alleles(temp, &ref, &alt);
+//    ref = allele0;
+//    alt = allele1;
     for(int i = 0; i < ngt_arr; i++) {
         gt[i] = gt_arr[i];
     }
     if (resultforSingleVariant->is_REF())
     {
-        if (resultforSingleVariant->variant_phased())
+        if (resultforSingleVariant->variant_phased() && blk_no != 0)
         {
             gt[2*SIDX] = bcf_gt_phased(ref);
             gt[2*SIDX+1] = bcf_gt_phased(alt);
@@ -332,12 +337,16 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
                 blk_count++;
             }
             ptr_PhasedBlock block = resultforSingleVariant->block.lock();
+            if (block->results.size() == 1) {
+                int tmp = 2;
+            }
             if (block.get() == nullptr)
             {
                 write_nxt_record(record, resultforSingleVariant, 0);
                 continue;
             }
             //already met
+            int mm = encountered_phased_block.count(block);
             if (encountered_phased_block.count(block) != 0)
             {
                 uint blk_no = encountered_phased_block[block];
@@ -346,7 +355,10 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
             else
             {
                 encountered_phased_block.emplace(block, ++blk_count);
-                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                if(block->results.size() == 1) {
+                    write_nxt_record(record, resultforSingleVariant, 0);
+                } else
+                    write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
             }
 
             gap_count = 0;

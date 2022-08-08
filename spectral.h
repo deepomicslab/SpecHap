@@ -119,7 +119,7 @@ public:
     ~Spectral();
 
 private:
-    void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph);
+    void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph & sub_variant_graph, std::map<uint, int> & subroutine_map, std::map<uint, uint> & subroutine_blk_start, std::map<uint,double> &block_qualities);
@@ -131,9 +131,9 @@ private:
     CMatrix slice_submat(std::set<uint> &variants_mat, bool t, CMatrix &adj_mat);
     void filter_inconsistency();
     void read_fragment_10x(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
-    void read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void read_fragment_hic(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
-    void read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
     void poss_phase_error_correction(uint block_start_idx);
     void fragment_supported_flipping_score(ptr_PhasedBlock &phased_block, Fragment & fragment, int *supporting_reads_count, double *supporting_weight_count, std::map<uint, std::set<uint>> &connection_map);

@@ -540,7 +540,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
             auto tm1 = weighted_graph(2 * i, 2*j);
             auto tm3 = weighted_graph(2*i, 2*j+1);
             double score = weighted_graph(2 * i, 2*j) - weighted_graph(2*i, 2*j+1);
-            if (score > 0 && score >= log10(2))
+            if (score > 0)
             {
                 adj_mat(2*i, 2*j) = adj_mat(2*i + 1, 2 * j + 1) = score;
                 adj_mat(2*i, 2*j + 1) = adj_mat(2*i + 1, 2 * j) = 0;
@@ -549,7 +549,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
                 var_graph.add_edge(i, j, true);
                 
             }
-            else if (score < 0 && score <= -log10(2))
+            else if (score < 0)
             {
                 adj_mat(2*i, 2*j) = adj_mat(2*i + 1, 2 * j + 1) = 0;
                 adj_mat(2*i, 2*j + 1) = adj_mat(2*i + 1, 2 * j) = -1 * score;
@@ -691,6 +691,22 @@ void Spectral::solver()
 //        for (auto start_idx: this->phased_block_starts)
 //            barcode_aware_filter(start_idx.first);
 //    }
+    auto var_count = this->variant_count;
+    for (int i = 0; i < var_count; i++) {
+        for (int j = i; j < var_count; j++) {
+            if (i == j)
+                continue;
+            //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
+            //the connection provides no sufficient information for phasing
+            auto tm1 = this->adjacency_matrix(2 * i, 2 * j);
+            auto tm3 = this->adjacency_matrix(2 * i, 2 * j + 1);
+            double score = this->adjacency_matrix(2 * i, 2 * j) - this->adjacency_matrix(2 * i, 2 * j + 1);
+
+            if (score > log10(2) || score - log10(2)) {
+                split_phased_blk(i);
+            }
+        }
+    }
 }
 
 void Spectral::add_snp_edge_barcode_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph &sub_variant_graph, std::map<uint, int> &subroutine_map, std::map<uint, uint> & subroutine_blk_start)

@@ -702,11 +702,13 @@ void Spectral::solver()
             auto tm3 = this->adjacency_matrix(2 * i, 2 * j + 1);
             double score = this->adjacency_matrix(2 * i, 2 * j) - this->adjacency_matrix(2 * i, 2 * j + 1);
 
-            if (score > log10(2) || score - log10(2)) {
-                split_phased_blk(i);
-            }
+//            if (((score > 0 && score < log10(2)) || (score < 0 && score > - log10(2))) && score != 0) {
+//                split_phased_blk(i);
+//            }
         }
     }
+    split_phased_blk(2);
+
 }
 
 void Spectral::add_snp_edge_barcode_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph &sub_variant_graph, std::map<uint, int> &subroutine_map, std::map<uint, uint> & subroutine_blk_start)

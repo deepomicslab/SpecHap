@@ -540,7 +540,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
             auto tm1 = weighted_graph(2 * i, 2*j);
             auto tm3 = weighted_graph(2*i, 2*j+1);
             double score = weighted_graph(2 * i, 2*j) - weighted_graph(2*i, 2*j+1);
-            if (score > 0)
+            if (score > 0 && score >= log10(2))
             {
                 adj_mat(2*i, 2*j) = adj_mat(2*i + 1, 2 * j + 1) = score;
                 adj_mat(2*i, 2*j + 1) = adj_mat(2*i + 1, 2 * j) = 0;
@@ -549,7 +549,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
                 var_graph.add_edge(i, j, true);
                 
             }
-            else if (score < 0)
+            else if (score < 0 && score <= -log10(2))
             {
                 adj_mat(2*i, 2*j) = adj_mat(2*i + 1, 2 * j + 1) = 0;
                 adj_mat(2*i, 2*j + 1) = adj_mat(2*i + 1, 2 * j) = -1 * score;

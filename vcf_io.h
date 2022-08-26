@@ -224,7 +224,7 @@ public:
     VCFWriter(const bcf_hdr_t *hdr, const char *outfile);
     ~VCFWriter();
     void write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resultforSingleVariant, const unsigned int blk_no);
-    void write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf);
+    void write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf, const std::set<uint> &break_idx);
 };
 
 

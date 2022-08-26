@@ -314,7 +314,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
 
 
 
-void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf)
+void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf, const std::set<uint> &break_idx)
 {
     bcf1_t *record = bcf_init();
     uint blk_count = 0;
@@ -322,11 +322,11 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
     std::unordered_map<ptr_PhasedBlock, uint > encountered_phased_block;
     frvcf.jump_to_contig(frvcf.curr_contig);
     std::unordered_map<uint, uint> idx2pos;
+    std::unordered_map<uint, uint> blk_no2_nblk_no;
     for (uint idx = 0; idx < chromo_phaser->variant_count; idx++)
     {
         frvcf.get_next_record(record);
         idx2pos[idx] = record->pos + 1;
-
         ptr_ResultforSingleVariant resultforSingleVariant = chromo_phaser->results_for_variant[idx];
         bcf_translate(this->header, frvcf.header, record);
 
@@ -337,6 +337,9 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
                 blk_count++;
             }
             ptr_PhasedBlock block = resultforSingleVariant->block.lock();
+            if (break_idx.find(idx) != break_idx.end()) {
+                blk_no2_nblk_no.emplace(idx2pos[block->start_variant_idx], record->pos + 1);
+            }
             if (block->results.size() == 1) {
                 int tmp = 2;
             }
@@ -350,15 +353,27 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
             if (encountered_phased_block.count(block) != 0)
             {
                 uint blk_no = encountered_phased_block[block];
-                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                uint cur_blk_no = idx2pos[block->start_variant_idx];
+                if (blk_no2_nblk_no.find(cur_blk_no) != blk_no2_nblk_no.end() && record->pos +1 >= blk_no2_nblk_no[cur_blk_no]) {
+                    auto new_blk_no = blk_no2_nblk_no[cur_blk_no];
+                    write_nxt_record(record, resultforSingleVariant, new_blk_no);
+                } else {
+                    write_nxt_record(record, resultforSingleVariant, cur_blk_no);
+                }
             }
             else
             {
                 encountered_phased_block.emplace(block, ++blk_count);
                 if(block->results.size() == 1) {
                     write_nxt_record(record, resultforSingleVariant, 0);
-                } else
-                    write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                } else{
+                    if (blk_no2_nblk_no.find(idx2pos[block->start_variant_idx]) != blk_no2_nblk_no.end() && record->pos >= blk_no2_nblk_no[idx2pos[block->start_variant_idx]]) {
+                        auto new_blk_no = blk_no2_nblk_no[idx2pos[block->start_variant_idx]];
+                        write_nxt_record(record, resultforSingleVariant, new_blk_no);
+                    } else {
+                        write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                    }
+                }
             }
 
             gap_count = 0;

@@ -661,6 +661,29 @@ void Spectral::solver()
             // connected phased block
         else
         {
+
+            auto var_count = this->variant_count;
+            for (int k = 0; k < var_count - 1; k++) {
+                auto j = k + 1;
+//        for (int j = i; j < var_count; j++) {
+//            if (i == j)
+//                continue;
+                //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
+                //the connection provides no sufficient information for phasing
+                auto tm1 = this->adjacency_matrix(2 * k, 2 * j);
+                auto tm3 = this->adjacency_matrix(2 * k, 2 * j + 1);
+                double score = this->adjacency_matrix(2 * k, 2 * j) - this->adjacency_matrix(2 * k, 2 * j + 1);
+
+                if (((score > 0 && score < 5) || (score < 0 && score > -5)) && score != 0) {
+//                split_phased_blk(i);
+//                auto blk_no = chromo_phaser->variant_to_block_id
+                    auto break_idx = this->phasing_window->mat_idx2var_idx(j);
+                    this->setBlkIdx(break_idx + this->phasing_window->start);
+                }
+//        }
+            }
+
+
             std::set<uint> &variants_mat = variant_graph.connected_component[mat_idx];
             GMatrix sub_mat = this->slice_submat(variants_mat);
             CMatrix sub_count = this->slice_submat(variants_mat, true);
@@ -691,23 +714,8 @@ void Spectral::solver()
 //        for (auto start_idx: this->phased_block_starts)
 //            barcode_aware_filter(start_idx.first);
 //    }
-    auto var_count = this->variant_count;
-    for (int i = 0; i < var_count; i++) {
-        for (int j = i; j < var_count; j++) {
-            if (i == j)
-                continue;
-            //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
-            //the connection provides no sufficient information for phasing
-            auto tm1 = this->adjacency_matrix(2 * i, 2 * j);
-            auto tm3 = this->adjacency_matrix(2 * i, 2 * j + 1);
-            double score = this->adjacency_matrix(2 * i, 2 * j) - this->adjacency_matrix(2 * i, 2 * j + 1);
 
-//            if (((score > 0 && score < log10(2)) || (score < 0 && score > - log10(2))) && score != 0) {
-//                split_phased_blk(i);
-//            }
-        }
-    }
-    split_phased_blk(2);
+//    split_phased_blk(2);
 
 }
 
@@ -1699,5 +1707,9 @@ void Spectral::hic_poss_solver(int nblock)
     delete[] this->raw_count;
     this->raw_count = nullptr;
     this->raw_graph = nullptr;
+}
+
+const std::set<uint> &Spectral::getBreakIdxs() const {
+    return break_idxs;
 }
 

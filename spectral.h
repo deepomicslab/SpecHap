@@ -72,6 +72,11 @@ private:
 
     bool has_hic;
     bool has_tenx;
+    std::set<uint> break_idxs;
+public:
+    const std::set<uint> &getBreakIdxs() const;
+
+private:
 
     //-----------------pack these into another classes------------------------
     BarcodeLinkers * barcode_linker;
@@ -117,6 +122,9 @@ public:
     }
 
     ~Spectral();
+    uint setBlkIdx(uint k) {
+        this->break_idxs.emplace(k);
+    }
 
 private:
     void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w);

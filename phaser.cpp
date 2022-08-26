@@ -148,13 +148,13 @@ void Phaser::phasing()
             std::string mess = " skipp " + std::string(frvcf->contigs[rid]);
             logging(std::cerr, mess);
 //            continue;
-            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf);
+            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf,spectral->getBreakIdxs());
 //            prev_variant_count += chromo_phaser->variant_count;
 //            spectral->release_chromo_phaser();
 //            delete chromo_phaser;
         } else {
             phasing_by_chrom(chromo_phaser->variant_count, chromo_phaser);
-            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf);
+            fwvcf->write_nxt_contigs(frvcf->contigs[rid].data(), chromo_phaser, *frvcf, spectral->getBreakIdxs());
         }
 
         //write vcf

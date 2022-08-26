@@ -85,6 +85,7 @@ Spectral::Spectral(std::vector<FragmentReader *>& frfrags, BEDReader *frbed, dou
     this->barcode_linker = new BarcodeLinkers(MAX_BARCODE_SPANNING);
     this->region_frag_stats = new RegionFragStats();
     this->barcode_linker->regionFragStats = region_frag_stats;
+    this->offset = 0;
 }
 
 Spectral::~Spectral()
@@ -526,6 +527,7 @@ void Spectral::cal_prob_matrix(ViewMap &weighted_graph, CViewMap &count_graph, G
     GMatrix &adj_mat = *ptr_adj_mat;
     CMatrix &count_mat = *ptr_count_mat;
     VariantGraph &var_graph = *ptr_var_graph;
+    auto tsize = weighted_graph.size();
 
     adj_mat = weighted_graph; // + GMatrix::Identity(2*var_count, 2*var_count);
 
@@ -638,8 +640,32 @@ void Spectral::solver()
     std::unordered_set<uint> met_idx;
     reset();
     uint mat_idx;
-
     //for each block (variant) in phasing window
+    auto var_count = this->variant_count;
+    for (int k = 0; k < var_count - 1; k++) {
+        auto j = k + 1;
+//        for (int j = i; j < var_count; j++) {
+//            if (i == j)
+//                continue;
+        //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
+        //the connection provides no sufficient information for phasing
+        auto break_idx = this->phasing_window->mat_idx2var_idx(j);
+        if(break_idx +451839  == 750387) {
+            auto tmpdebug = 1;
+        }
+        auto tsize = this->adjacency_matrix.size();
+        auto tm1 = this->adjacency_matrix(2 * k, 2 * j);
+        auto tm3 = this->adjacency_matrix(2 * k, 2 * j + 1);
+        double score = this->adjacency_matrix(2 * k, 2 * j) - this->adjacency_matrix(2 * k, 2 * j + 1);
+
+        if (((score > 0 && score < 5) || (score < 0 && score > -5))) {
+//                split_phased_blk(i);
+//                auto blk_no = chromo_phaser->variant_to_block_id
+            auto break_idx = this->phasing_window->mat_idx2var_idx(j);
+            this->setBlkIdx(break_idx);
+        }
+//        }
+    }
     for (auto i : phasing_window->current_window_idxes)
     {
         if (i == 15)
@@ -661,29 +687,6 @@ void Spectral::solver()
             // connected phased block
         else
         {
-
-            auto var_count = this->variant_count;
-            for (int k = 0; k < var_count - 1; k++) {
-                auto j = k + 1;
-//        for (int j = i; j < var_count; j++) {
-//            if (i == j)
-//                continue;
-                //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
-                //the connection provides no sufficient information for phasing
-                auto tm1 = this->adjacency_matrix(2 * k, 2 * j);
-                auto tm3 = this->adjacency_matrix(2 * k, 2 * j + 1);
-                double score = this->adjacency_matrix(2 * k, 2 * j) - this->adjacency_matrix(2 * k, 2 * j + 1);
-
-                if (((score > 0 && score < 5) || (score < 0 && score > -5)) && score != 0) {
-//                split_phased_blk(i);
-//                auto blk_no = chromo_phaser->variant_to_block_id
-                    auto break_idx = this->phasing_window->mat_idx2var_idx(j);
-                    this->setBlkIdx(break_idx + this->phasing_window->start);
-                }
-//        }
-            }
-
-
             std::set<uint> &variants_mat = variant_graph.connected_component[mat_idx];
             GMatrix sub_mat = this->slice_submat(variants_mat);
             CMatrix sub_count = this->slice_submat(variants_mat, true);
@@ -708,6 +711,8 @@ void Spectral::solver()
             block_no++;
         }
     }
+    this->offset += this->chromo_phaser->intended_window_size;
+
 //    TODO, if we need this
 //    if (HAS_TENX)
 //    {
@@ -1711,5 +1716,13 @@ void Spectral::hic_poss_solver(int nblock)
 
 const std::set<uint> &Spectral::getBreakIdxs() const {
     return break_idxs;
+}
+
+uint Spectral::getOffset() const {
+    return offset;
+}
+
+void Spectral::setOffset(uint offset) {
+    Spectral::offset = offset;
 }
 

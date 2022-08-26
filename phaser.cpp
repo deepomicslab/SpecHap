@@ -171,7 +171,7 @@ void Phaser::phasing_by_chrom(uint var_count, ChromoPhaser *chromo_phaser)
         item->set_curr_chr_var_count(var_count);
     }
 //    frfrag->set_curr_chr_var_count(var_count);
-
+    this->spectral->setOffset(0);
     while (chromo_phaser->phased->rest_blk_count > 0)
     {
         if (chromo_phaser->phased->rest_blk_count > chromo_phaser->init_block_count)

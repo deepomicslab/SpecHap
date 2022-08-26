@@ -56,7 +56,14 @@ private:
     int *raw_count;
     GMatrix adjacency_matrix;
     CMatrix count_matrix;
-    uint offset;                    //offset for current phasing window
+    uint offset;
+public:
+    uint getOffset() const;
+
+    void setOffset(uint offset);
+
+private:
+    //offset for current phasing window
     double threhold;                //precision, to be calculated from read depth                         //operation mode, PE, 10X or HiC
     uint variant_count;                 //number of point
     uint start_variant_idx;

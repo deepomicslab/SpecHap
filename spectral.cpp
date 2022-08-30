@@ -649,10 +649,10 @@ void Spectral::solver()
 //                continue;
         //adj_mat(i, j)  = abs(log10(weighted_graph(i, j)));
         //the connection provides no sufficient information for phasing
-        auto break_idx = this->phasing_window->mat_idx2var_idx(j);
-        if(break_idx +451839  == 465951) {
-            auto tmpdebug = 1;
-        }
+//        auto break_idx = this->phasing_window->mat_idx2var_idx(j);
+//        if(break_idx +451839  == 465951) {
+//            auto tmpdebug = 1;
+//        }
         auto tsize = this->adjacency_matrix.size();
         auto tm1 = this->adjacency_matrix(2 * k, 2 * j);
         auto tm3 = this->adjacency_matrix(2 * k, 2 * j + 1);

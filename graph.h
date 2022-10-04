@@ -9,6 +9,7 @@
 #include "type.h"
 
 //TODO: remove edge and redo clustering
+//TODO: change the dfs method into disjointed set
 //note that the variant graph and spectral uses matrix idx (insertion order) for calculation purpose
 
 class VariantGraph              //linked list implementation for graph of variant, for checking connected component

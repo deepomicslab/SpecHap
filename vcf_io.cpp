@@ -92,8 +92,10 @@ VCFWriter::VCFWriter(const bcf_hdr_t *hdr, const char *outfile)
 
     header = bcf_hdr_dup(hdr);
     header_init();
+    ngt = bcf_hdr_nsamples(hdr);
 
-    gt = new int[ngt];
+//    gt = new int[2*ngt];
+    gt = (int*)malloc(ngt*2*sizeof(int));
 }
 
 void VCFWriter::header_init()
@@ -216,29 +218,35 @@ VCFWriter::~VCFWriter()
 
 void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resultforSingleVariant, const unsigned int blk_no)
 {
+    if (record->pos == 126330351) {
+        int tmp = 33;
+    }
     const char * filter = filter_map.find(resultforSingleVariant->get_filter())->second.data();
     int ref;
     int alt;
     int32_t *gt_arr = NULL, ngt_arr = 0;
     bcf_get_genotypes(header, record, &gt_arr, &ngt_arr);
     int32_t *ptr = gt_arr;
-    int allele0 = bcf_gt_allele(ptr[0]);
-    int allele1 = bcf_gt_allele(ptr[1]);
+    int allele0 = bcf_gt_allele(ptr[2*SIDX]);
+    int allele1 = bcf_gt_allele(ptr[2*SIDX+1]);
     int temp = bcf_alleles2gt(allele0, allele1);;
     bcf_gt2alleles(temp, &ref, &alt);
-
-
+//    ref = allele0;
+//    alt = allele1;
+    for(int i = 0; i < ngt_arr; i++) {
+        gt[i] = gt_arr[i];
+    }
     if (resultforSingleVariant->is_REF())
     {
-        if (resultforSingleVariant->variant_phased())
+        if (resultforSingleVariant->variant_phased() && blk_no != 0)
         {
-            gt[0] = bcf_gt_phased(ref);
-            gt[1] = bcf_gt_phased(alt);
+            gt[2*SIDX] = bcf_gt_phased(ref);
+            gt[2*SIDX+1] = bcf_gt_phased(alt);
         }
         else
         {
-            gt[0] = bcf_gt_unphased(ref);
-            gt[1] = bcf_gt_unphased(alt);
+            gt[2*SIDX] = bcf_gt_unphased(ref);
+            gt[2*SIDX+1] = bcf_gt_unphased(alt);
         }
 
     }
@@ -246,22 +254,56 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     {
         if (resultforSingleVariant->variant_phased())
         {
-            gt[0] = bcf_gt_phased(alt);
-            gt[1] = bcf_gt_phased(ref);
+            gt[2*SIDX] = bcf_gt_phased(alt);
+            gt[2*SIDX+1] = bcf_gt_phased(ref);
         }
         else
         {
-            gt[0] = bcf_gt_unphased(alt);
-            gt[1] = bcf_gt_unphased(ref);
+            gt[2*SIDX] = bcf_gt_unphased(alt);
+            gt[2*SIDX+1] = bcf_gt_unphased(ref);
         }
     }
 
     int k = bcf_hdr_id2int(this->header, BCF_DT_ID, filter);
     bcf_update_filter(this->header, record, &k, 1);
-    bcf_update_genotypes(this->header, record, gt, ngt);
+    bcf_update_genotypes(this->header, record, gt, 2*ngt);
     
-    if (resultforSingleVariant->variant_phased())
-        bcf_update_format_int32(this->header, record, "PS", &blk_no, 1);
+    if (resultforSingleVariant->variant_phased()) {
+        int *ps_s = nullptr;
+        int nps = 0, ps =0;
+//        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
+        if (nps <=0 ) {
+            ps_s = (int*)malloc(ngt*2*sizeof(int));
+            for (int i = 0; i < ngt; ++i) {
+                ps_s[i] = 0;
+            }
+        }else {
+            for (int i = 0; i < ngt; ++i) {
+                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+            }
+        }
+        ps_s[SIDX] = blk_no;
+        bcf_update_format_int32(this->header, record, "PS", ps_s, ngt);
+        if (ps_s != nullptr)
+        free(ps_s);
+    } else {
+        int *ps_s = nullptr;
+        int nps = 0, ps =0;
+//        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
+        if (nps <= 0) {
+            ps_s = (int*)malloc(ngt*2*sizeof(int));
+            for (int i = 0; i < ngt; ++i) {
+                ps_s[i] = 0;
+            }
+        } else {
+            for (int i = 0; i < ngt; ++i) {
+                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+            }
+        }
+        bcf_update_format_int32(this->header, record, "PS", ps_s, ngt);
+        if (ps_s != nullptr)
+            free(ps_s);
+    }
 
     bcf1_t *record_w = bcf_dup(record);
     //bcf_unpack(record_w, BCF_UN_ALL);
@@ -272,7 +314,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
 
 
 
-void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf)
+void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf, const std::set<uint> &break_idx)
 {
     bcf1_t *record = bcf_init();
     uint blk_count = 0;
@@ -280,11 +322,11 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
     std::unordered_map<ptr_PhasedBlock, uint > encountered_phased_block;
     frvcf.jump_to_contig(frvcf.curr_contig);
     std::unordered_map<uint, uint> idx2pos;
+    std::unordered_map<uint, uint> blk_no2_nblk_no;
     for (uint idx = 0; idx < chromo_phaser->variant_count; idx++)
     {
         frvcf.get_next_record(record);
         idx2pos[idx] = record->pos + 1;
-
         ptr_ResultforSingleVariant resultforSingleVariant = chromo_phaser->results_for_variant[idx];
         bcf_translate(this->header, frvcf.header, record);
 
@@ -295,21 +337,43 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
                 blk_count++;
             }
             ptr_PhasedBlock block = resultforSingleVariant->block.lock();
+            if (break_idx.find(idx) != break_idx.end()) {
+                blk_no2_nblk_no.emplace(idx2pos[block->start_variant_idx], record->pos + 1);
+            }
+            if (block->results.size() == 1) {
+                int tmp = 2;
+            }
             if (block.get() == nullptr)
             {
                 write_nxt_record(record, resultforSingleVariant, 0);
                 continue;
             }
             //already met
+            int mm = encountered_phased_block.count(block);
             if (encountered_phased_block.count(block) != 0)
             {
                 uint blk_no = encountered_phased_block[block];
-                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                uint cur_blk_no = idx2pos[block->start_variant_idx];
+                if (blk_no2_nblk_no.find(cur_blk_no) != blk_no2_nblk_no.end() && record->pos +1 >= blk_no2_nblk_no[cur_blk_no]) {
+                    auto new_blk_no = blk_no2_nblk_no[cur_blk_no];
+                    write_nxt_record(record, resultforSingleVariant, new_blk_no);
+                } else {
+                    write_nxt_record(record, resultforSingleVariant, cur_blk_no);
+                }
             }
             else
             {
                 encountered_phased_block.emplace(block, ++blk_count);
-                write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                if(block->results.size() == 1) {
+                    write_nxt_record(record, resultforSingleVariant, 0);
+                } else{
+                    if (blk_no2_nblk_no.find(idx2pos[block->start_variant_idx]) != blk_no2_nblk_no.end() && record->pos >= blk_no2_nblk_no[idx2pos[block->start_variant_idx]]) {
+                        auto new_blk_no = blk_no2_nblk_no[idx2pos[block->start_variant_idx]];
+                        write_nxt_record(record, resultforSingleVariant, new_blk_no);
+                    } else {
+                        write_nxt_record(record, resultforSingleVariant, idx2pos[block->start_variant_idx]);
+                    }
+                }
             }
 
             gap_count = 0;

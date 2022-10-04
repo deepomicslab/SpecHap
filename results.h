@@ -21,7 +21,8 @@ enum class filter_type
             TENX_RESCUED_MOLECUE_HIGH_DIVERSITY
         };
 
-enum class op_mode{TENX, STLFR, PE, HIC, PACBIO, NANOPORE};
+
+
 typedef std::bitset<1> shap;
 typedef unsigned int uint;
 

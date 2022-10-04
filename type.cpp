@@ -299,7 +299,7 @@ void PhasingWindow::update_phasing_info_keep_phased()
     uint temp_start = 0;
     current_window_overlap_region_block_size.clear();
 
-
+    // if it is the first interval
     if (i == block_idxes.begin())
     {
         phased_blk_count = 0;
@@ -323,7 +323,7 @@ void PhasingWindow::update_phasing_info_keep_phased()
         while ( count < overlap_length  )
         {
             count++;
-
+            
             if (i == block_idxes.begin())
                 break;
             i = prev(i);

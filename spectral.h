@@ -17,6 +17,7 @@
 #include "tenx_util.h"
 #include "hic_util.h"
 #include "graph.h"
+#include "util.h"
 //------------------------------------------------alias----------------------------------------------
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> GMatrix;
 typedef Eigen::Map<GMatrix> ViewMap;
@@ -24,6 +25,13 @@ typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> CMatrix;
 typedef Eigen::Map<CMatrix> CViewMap;
 typedef Eigen::FullPivLU<GMatrix> denseChol;
 typedef Eigen::ArpackGeneralizedSelfAdjointEigenSolver<GMatrix , denseChol> Arpack;
+
+//----------------------------------------------------------------------------------------------------
+extern int MAX_BARCODE_SPANNING;
+extern int OPERATION;
+extern std::vector<int> OPERATIONS;
+extern bool HAS_HIC;
+extern bool HAS_TENX;
 
 inline double cal_score(double a, double b)
 {
@@ -48,9 +56,15 @@ private:
     int *raw_count;
     GMatrix adjacency_matrix;
     CMatrix count_matrix;
-    uint offset;                    //offset for current phasing window
-    double threhold;                //precision, to be calculated from read depth
-    op_mode op;                         //operation mode, PE, 10X or HiC
+    uint offset;
+public:
+    uint getOffset() const;
+
+    void setOffset(uint offset);
+
+private:
+    //offset for current phasing window
+    double threhold;                //precision, to be calculated from read depth                         //operation mode, PE, 10X or HiC
     uint variant_count;                 //number of point
     uint start_variant_idx;
     uint end_variant_idx_intended;
@@ -63,6 +77,14 @@ private:
     double q_aver;
     double q_sum;
 
+    bool has_hic;
+    bool has_tenx;
+    std::set<uint> break_idxs;
+public:
+    const std::set<uint> &getBreakIdxs() const;
+
+private:
+
     //-----------------pack these into another classes------------------------
     BarcodeLinkers * barcode_linker;
     bool barcode_linker_index_set;
@@ -72,7 +94,8 @@ private:
 
     std::map<uint, uint> phased_block_starts;
     std::set<uint> block_tobe_split;
-    FragmentReader *fr;             //Fragment matrix reader
+//    FragmentReader *fr;             //Fragment matrix reader
+    std::vector<FragmentReader* > frs;
     BEDReader *frbed;
     HiCLinkerContainer hic_linker_container;
     VariantGraph variant_graph;
@@ -82,7 +105,7 @@ private:
 
 
 public:
-    Spectral(FragmentReader *fr, BEDReader *frbed, op_mode op, double threhold, int coverage, int max_barcode_spanning_length, bool use_secondary);
+    Spectral(std::vector<FragmentReader *>& frs, BEDReader *frbed, double threhold, int coverage, bool use_secondary);
     void clean();
     void reset();
     void solver();
@@ -106,9 +129,12 @@ public:
     }
 
     ~Spectral();
+    uint setBlkIdx(uint k) {
+        this->break_idxs.emplace(k);
+    }
 
 private:
-    void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph);
+    void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph & sub_variant_graph, std::map<uint, int> & subroutine_map, std::map<uint, uint> & subroutine_blk_start, std::map<uint,double> &block_qualities);
@@ -119,11 +145,11 @@ private:
     CMatrix slice_submat(std::set<uint> &variants_mat, bool t);
     CMatrix slice_submat(std::set<uint> &variants_mat, bool t, CMatrix &adj_mat);
     void filter_inconsistency();
-    void read_fragment_10x();
-    void read_fragment();
-    void read_fragment_hic();
-    void read_fragment_pacbio();
-    void read_fragment_nanopore();
+    void read_fragment_10x(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
+    void read_fragment_hic(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
+    void read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
+    void read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
     void poss_phase_error_correction(uint block_start_idx);
     void fragment_supported_flipping_score(ptr_PhasedBlock &phased_block, Fragment & fragment, int *supporting_reads_count, double *supporting_weight_count, std::map<uint, std::set<uint>> &connection_map);
     int locate_block_valid_start(const Eigen::VectorXd &vec);

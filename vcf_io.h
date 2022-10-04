@@ -12,8 +12,9 @@
 #include <string>
 #include "htslib/tbx.h"
 #include "results.h"
-
+extern int SIDX;
 typedef std::map<filter_type , std::string> filter_map_t;
+//const int DOT_PS = 2147483648;
 
 enum format_n{GT, PS};
 class VCFReader
@@ -95,14 +96,14 @@ public:
         //bcf_empty(record);
         //no such contig or iter not initialized
         if (iter == nullptr)
-            return -1;
+            return -1;   
         //bcf1_t *r = bcf_init();
         int status = tbx_itr_next(vcf_file, tbx_index, iter, &tmp);
         if (status < 0)
             return  status;
         status = vcf_parse1(&tmp, header, buffer);
         if (status != 0) //eof or corruption in file
-            return status;
+            return -1;
         //new contig
         if (buffer->rid != this->curr_bcf_contig)
             return -1;
@@ -122,52 +123,63 @@ public:
         nps = bcf_get_format_int32(header ,buffer, "PS", &ps_s, &ps);
         buffer->qual == NAN ? result->qual = 40 : result->qual = buffer->qual;
         result->pos = buffer->pos;
-        dps == nullptr ? result->dp = 30 : result->dp = dps[0];
-        afs == nullptr ? result->af = 0.5 : result->af = afs[0];
-        ps_s == nullptr ? result->ps = 0: result->ps = ps_s[0];
+        if (buffer->pos == 126330351) {
+            int tmp = 33;
+        }
+        dps == nullptr ? result->dp = 30 : result->dp = dps[SIDX];
+        afs == nullptr ? result->af = 0.5 : result->af = afs[SIDX];
+        ps_s == nullptr ? result->ps = 0: result->ps = ps_s[SIDX];
         if (ads != nullptr)
         {
-            if (nad == 2)
+            if (nad % 2 == 0)
             {
-                result->ad0 = ads[0];
-                result->ad1 = ads[1];
+                result->ad0 = ads[2*SIDX];
+                result->ad1 = ads[2*SIDX+1];
             }
-            if (nad == 3)
+            if (nad % 3 == 0)
             {
-                result->ad0 = ads[1];
-                result->ad1 = ads[2];
+                result->ad0 = ads[2*SIDX+1];
+                result->ad1 = ads[2*SIDX+2];
             }
         }
-        free(dps); free(ads); free(ps_s); free(afs);
 
         if (use_gt)
         {   
             int32_t *gt_arr = nullptr, ngt_arr = 0;
             bcf_get_genotypes(header, buffer, &gt_arr, &ngt_arr);
             int32_t *ptr = gt_arr;
-            int allele0 = bcf_gt_allele(ptr[0]);
-            int allele1 = bcf_gt_allele(ptr[1]);
+            int allele0 = bcf_gt_allele(ptr[2*SIDX]);
+            int allele1 = bcf_gt_allele(ptr[2*SIDX+1]);
             
 
-            if (allele1 == allele0)
+            if (allele1 == allele0) //homozy
             {
                 free(gt_arr);
-                return 0;
+                return 1;
             }
             if (ps_s != nullptr)
             {
-                if (allele0 == 0)
-                    result->set_hap_0();
-                else if (allele0 == 1)
-                    result->set_hap_1();
+                if (allele0 == 2 || allele1 == 2) {
+                    if (allele0 == 0 || allele0 == 1)
+                        result->set_hap_0();
+                    else
+                        result->set_hap_1();
+                } else {
+                    if (allele0 == 0)
+                        result->set_hap_0();
+                    else if (allele0 == 1)
+                        result->set_hap_1();
+                }
                 result->set_phased();
                 //std::cout<< allele0 << ";" << allele1 << std::endl;
             }
             free(gt_arr);
             
         }
+        free(dps); free(ads); free(ps_s); free(afs);
+
         //bcf_destroy(r);
-        return status;
+        return 0;
     }
 
     inline int jump_to_contig(int contig_id)
@@ -202,7 +214,7 @@ private:
                 {filter_type::TENX_QUAL_FILTER, "TENX_QUAL_FILTER"},
                 {filter_type ::TENX_RESCUED_MOLECUE_HIGH_DIVERSITY, "TENX_RESCUED_MOLECUE_HIGH_DIVERSITY"}
         };
-    const int ngt = 2;
+    int ngt;
     int *gt;
 
 private:
@@ -212,7 +224,7 @@ public:
     VCFWriter(const bcf_hdr_t *hdr, const char *outfile);
     ~VCFWriter();
     void write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resultforSingleVariant, const unsigned int blk_no);
-    void write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf);
+    void write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phaser, VCFReader &frvcf, const std::set<uint> &break_idx);
 };
 
 

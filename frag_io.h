@@ -4,20 +4,21 @@
 
 #ifndef PHASER_FRAG_IO_H
 #define PHASER_FRAG_IO_H
-#include "htslib/vcf.h"
+#include <htslib/vcf.h>
 #include <fstream>
 #include <cstring>
 #include <string>
 #include <htslib/tbx.h>
 #include "type.h"
 #include <cmath>
+#include "util.h"
 
-#define BASE_OFFSET 33
+extern int BASE_OFFSET;
+extern bool NEW_FORMAT; 
+extern bool HYBRID;
 
 template < class ContainerT >
 void tokenize(const std::string &str, ContainerT &tokens, const std::string &delimiters=" ", bool trimEmpty=false);
-
-
 
 class FragmentReader
 {
@@ -35,7 +36,10 @@ private:
     inline std::streampos tell() { return this->frag_file.tellg(); }
     inline void seek(std::streampos pos) { this->frag_file.seekg(pos); }
     inline void get_chr(std::string &name) {}
-    inline double cal_base_qual(char & qual) {return  1 - pow(0.1, double(qual - BASE_OFFSET) / 10);}
+    inline double cal_base_qual(char & qual) {
+        auto v = 1 - pow(0.1, double(qual - BASE_OFFSET) / 10);
+        return  v;
+    }
 
 public:
     explicit FragmentReader(const char *file_name);
@@ -53,10 +57,9 @@ public:
     bool get_next_tenx(Fragment &fragment);
     bool get_next_hic(Fragment &fragment);
     bool get_next_pacbio(Fragment &fragment);
-    bool get_next_pacbio_newformat(Fragment &fragment);
-    bool get_next_nanopore_newformat(Fragment &fragment);
     bool get_next_nanopore(Fragment &fragment);
-    op_mode detect_file_type();
+    bool get_next_hybrid(Fragment &fragment);
+    
 };
 
 struct FragStat

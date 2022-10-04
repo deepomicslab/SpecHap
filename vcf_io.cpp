@@ -270,9 +270,9 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
     
     if (resultforSingleVariant->variant_phased()) {
         int *ps_s = nullptr;
-        int nps, ps =0;
-        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
-        if (nps < 0) {
+        int nps = 0, ps =0;
+//        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
+        if (nps <=0 ) {
             ps_s = (int*)malloc(ngt*2*sizeof(int));
             for (int i = 0; i < ngt; ++i) {
                 ps_s[i] = 0;
@@ -288,9 +288,9 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
         free(ps_s);
     } else {
         int *ps_s = nullptr;
-        int nps, ps =0;
-        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
-        if (nps < 0) {
+        int nps = 0, ps =0;
+//        nps = bcf_get_format_int32(this->header ,record, "PS", &ps_s, &ps);
+        if (nps <= 0) {
             ps_s = (int*)malloc(ngt*2*sizeof(int));
             for (int i = 0; i < ngt; ++i) {
                 ps_s[i] = 0;

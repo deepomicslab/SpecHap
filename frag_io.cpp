@@ -82,6 +82,9 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         if (token_size < 2)
         {
             std::string message = "detected truncated fragment file, exit now.";
@@ -179,8 +182,11 @@ bool FragmentReader::get_next_tenx(Fragment &fragment)
             return false;
         tokenize(line, this->buffer, " ", true);
         //EOF
-  
+
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         if (token_size < 2)
         {
             std::string message = "detected truncated fragment file, exit now.";
@@ -273,6 +279,9 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         if (token_size < 2)
         {
             std::string message = "detected truncated fragment file, exit now.";
@@ -374,6 +383,9 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         if (token_size < 2)
         {
             std::string message = "detected truncated fragment file, exit now.";
@@ -474,6 +486,9 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         
         if (token_size < 2)
         {
@@ -569,6 +584,9 @@ bool FragmentReader::get_next_hybrid(Fragment &fragment)
         tokenize(line, this->buffer, " ", true);
         //EOF
         auto token_size = buffer.size();
+        if (buffer.back() == "SV") {
+            auto token_size = buffer.size() - 1;
+        }
         if (token_size < estimated_buffer_len)
         {
             std::string message = "detected truncated fragment file, exit now.";

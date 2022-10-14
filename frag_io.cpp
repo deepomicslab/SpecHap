@@ -83,7 +83,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         if (token_size < 2)
         {
@@ -185,7 +185,7 @@ bool FragmentReader::get_next_tenx(Fragment &fragment)
 
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         if (token_size < 2)
         {
@@ -280,7 +280,7 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         if (token_size < 2)
         {
@@ -384,7 +384,7 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         if (token_size < 2)
         {
@@ -487,7 +487,7 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         
         if (token_size < 2)
@@ -585,7 +585,7 @@ bool FragmentReader::get_next_hybrid(Fragment &fragment)
         //EOF
         auto token_size = buffer.size();
         if (buffer.back() == "SV") {
-            auto token_size = buffer.size() - 1;
+            token_size = buffer.size() - 1;
         }
         if (token_size < estimated_buffer_len)
         {

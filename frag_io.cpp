@@ -124,7 +124,11 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
             this->nxt_window_set = true;
         }
 
-        fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        if (buffer.back() == "SV") {
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+        } else {
+            fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        }
         std::string &bs_qual = this->buffer[token_size - 2];
 
         uint bs_ix = 0;
@@ -307,7 +311,11 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
             this->nxt_window_set = true;
         }
 
-        fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        if (buffer.back() == "SV") {
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+        } else {
+            fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        }
         fragment.insertion_size = insertion_size;
         std::string &bs_qual = this->buffer[token_size - 2];
 
@@ -402,7 +410,11 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
         }
 
 
-        fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        if (buffer.back() == "SV") {
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+        } else {
+            fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        }
 
 
         std::string &bs_qual = this->buffer[token_size - 2];
@@ -497,7 +509,11 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
             this->nxt_window_set = true;
         }
 
-        fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        if (buffer.back() == "SV") {
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+        } else {
+            fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        }
 
 
         std::string &bs_qual = this->buffer[token_size - 2];
@@ -614,7 +630,11 @@ bool FragmentReader::get_next_hybrid(Fragment &fragment)
             this->nxt_window_set = true;
         }
 
-        fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        if (buffer.back() == "SV") {
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+        } else {
+            fragment.read_qual = std::stod(this->buffer.back()) / -10;
+        }
         std::string &bs_qual = this->buffer[token_size - 2];
 
         uint bs_ix = 0;

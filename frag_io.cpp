@@ -137,16 +137,19 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
 
         uint bs_ix = 0;
         uint ix;
+        std::cout<<"1"<<std::endl;
         for (int i = 0; i < no_blx; i++)
         {
             ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
             std::string &blk = this->buffer[2 * i + index_idx + 1];
+            std::cout<<"3"<<i<<std::endl;
             for (char &c : blk)
             {
                 snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual( bs_qual[bs_ix++] )));
                 fragment.insert(t);
             }
         }
+        std::cout<<"2"<<std::endl;
         fragment.update_start_end();
         fragment.type = FRAG_NORMAL;
         return true;

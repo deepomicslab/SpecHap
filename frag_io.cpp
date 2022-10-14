@@ -130,32 +130,32 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
             auto tmp = 33;
         }
         if (buffer.back() == "SV") {
-            std::cout<<this->buffer[buffer.size() - 2]<<line<<std::endl;
+//            std::cout<<this->buffer[buffer.size() - 2]<<line<<std::endl;
             fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
-        std::cout<<fragment.read_qual<<std::endl;
+//        std::cout<<fragment.read_qual<<std::endl;
         std::string &bs_qual = this->buffer[token_size - 2];
 
         uint bs_ix = 0;
         uint ix;
-        std::cout<<"1"<<std::endl;
+//        std::cout<<"1"<<std::endl;
         for (int i = 0; i < no_blx; i++)
         {
             ix = std::stol(this->buffer[index_idx + 2 * i]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
             std::string &blk = this->buffer[2 * i + index_idx + 1];
-            std::cout<<"3"<<i<<std::endl;
+//            std::cout<<"3"<<i<<std::endl;
             for (char &c : blk)
             {
                 snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual( bs_qual[bs_ix++] )));
                 fragment.insert(t);
             }
         }
-        std::cout<<"2"<<std::endl;
+//        std::cout<<"2"<<std::endl;
         fragment.update_start_end();
         fragment.type = FRAG_NORMAL;
-        std::cout<<"4"<<std::endl;
+//        std::cout<<"4"<<std::endl;
         return true;
     }
     catch (const std::ios_base::failure &e)

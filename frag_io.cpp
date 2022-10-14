@@ -123,13 +123,16 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
             this->nxt_window_start = curr_pos;
             this->nxt_window_set = true;
         }
-
+        if (name == "SRR5115029.143545") {
+            auto tmp = 33;
+        }
         if (buffer.back() == "SV") {
             std::cout<<this->buffer[buffer.size() - 2]<<line<<std::endl;
             fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
+        std::cout<<fragment.read_qual<<std::endl;
         std::string &bs_qual = this->buffer[token_size - 2];
 
         uint bs_ix = 0;

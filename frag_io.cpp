@@ -125,6 +125,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         }
 
         if (buffer.back() == "SV") {
+            std::cout<<this->buffer[buffer.size() - 2]<<line<<std::endl;
             fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;

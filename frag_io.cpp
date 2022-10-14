@@ -125,7 +125,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         }
 
         if (buffer.back() == "SV") {
-            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
@@ -312,7 +312,7 @@ bool FragmentReader::get_next_hic(Fragment &fragment)
         }
 
         if (buffer.back() == "SV") {
-            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
@@ -411,7 +411,7 @@ bool FragmentReader::get_next_nanopore(Fragment &fragment)
 
 
         if (buffer.back() == "SV") {
-            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
@@ -510,7 +510,7 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
         }
 
         if (buffer.back() == "SV") {
-            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }
@@ -631,7 +631,7 @@ bool FragmentReader::get_next_hybrid(Fragment &fragment)
         }
 
         if (buffer.back() == "SV") {
-            fragment.read_qual = std::stod(this->buffer[buffer.size() - 1]) / -10;
+            fragment.read_qual = std::stod(this->buffer[buffer.size() - 2]) / -10;
         } else {
             fragment.read_qual = std::stod(this->buffer.back()) / -10;
         }

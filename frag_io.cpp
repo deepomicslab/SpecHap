@@ -152,6 +152,7 @@ bool FragmentReader::get_next_pe(Fragment &fragment)
         std::cout<<"2"<<std::endl;
         fragment.update_start_end();
         fragment.type = FRAG_NORMAL;
+        std::cout<<"4"<<std::endl;
         return true;
     }
     catch (const std::ios_base::failure &e)

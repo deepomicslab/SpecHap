@@ -279,7 +279,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
             }
         }else {
             for (int i = 0; i < ngt; ++i) {
-                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+                ps_s[i] = (ps_s[i] >= INT_MAX || ps_s[i] < 0) ? 0:ps_s[i];
             }
         }
         ps_s[SIDX] = blk_no;
@@ -297,7 +297,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
             }
         } else {
             for (int i = 0; i < ngt; ++i) {
-                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+                ps_s[i] = (ps_s[i] >= INT_MAX || ps_s[i] < 0) ? 0:ps_s[i];
             }
         }
         bcf_update_format_int32(this->header, record, "PS", ps_s, ngt);

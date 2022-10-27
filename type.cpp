@@ -18,6 +18,14 @@ Fragment::Fragment(const Fragment &rhs)
     this->end = rhs.end;
 }
 
+int Fragment::getType() const {
+    return type;
+}
+
+void Fragment::setType(int Ftype) {
+    Fragment::type = Ftype;
+}
+
 //------------------------------- PhasedBlock Class ------------------------------------//
 
 PhasedBlock::PhasedBlock() { std::cout << "You shouldn't be here"; }

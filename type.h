@@ -23,13 +23,15 @@ typedef std::vector<snp_info> snp_container;
 #define FRAG_HIC    0
 #define FRAG_10X    1
 #define FRAG_NORMAL 2
+#define FRAG_MATRIX 3
 
 #define MODE_10X        0
 #define MODE_HIC        1
 #define MODE_PE         2
 #define MODE_PACBIO     3
 #define MODE_NANOPORE   4
-#define MODE_HYBRID     5
+#define MODE_MATRIX     5
+#define MODE_HYBRID     6
 class Fragment
 {
 public:
@@ -37,7 +39,12 @@ public:
     Fragment(const Fragment &rhs);
     ~Fragment() = default;
     uint start, end;
-    int type = FRAG_NORMAL;               
+    int type = FRAG_NORMAL;
+
+    int getType() const;
+
+    void setType(int type);
+
     snp_container snps;         //<variant_idx, allele>
     std::string barcode;
     double read_qual = 0;

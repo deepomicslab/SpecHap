@@ -65,21 +65,22 @@ public:
 private:
     //offset for current phasing window
     double threhold;                //precision, to be calculated from read depth                         //operation mode, PE, 10X or HiC
-    uint variant_count;                 //number of point
-    uint start_variant_idx;
-    uint end_variant_idx_intended;
-    uint end_variant_idx_overlap;
-    uint n;                             //size of array
+    uint variant_count{};                 //number of point
+    uint start_variant_idx{};
+    uint end_variant_idx_intended{};
+    uint end_variant_idx_overlap{};
+    uint n{};                             //size of array
     double epsilon;
     int coverage;
-    int max_barcode_spanning_length;
+    int max_barcode_spanning_length{};
     std::vector<Fragment> frag_buffer;
     double q_aver;
     double q_sum;
 
-    bool has_hic;
-    bool has_tenx;
+    bool has_hic{};
+    bool has_tenx{};
     std::set<uint> break_idxs;
+    std::vector<double> fr_weights;
 public:
     const std::set<uint> &getBreakIdxs() const;
 
@@ -105,9 +106,10 @@ private:
 
 
 public:
-    Spectral(std::vector<FragmentReader *>& frs, BEDReader *frbed, double threhold, int coverage, bool use_secondary);
+    Spectral(std::vector<FragmentReader *>& frs, std::vector<double>& fr_weights, BEDReader *frbed, double threhold, int coverage, bool use_secondary);
     void clean();
     void reset();
+    void set_prev_buff(ViewMap& weighted_graph, CViewMap& count_graph);
     void solver();
     void hic_poss_solver(int nblock);
     std::unordered_map<uint, std::set<uint>> load_hic_poss_info();
@@ -135,6 +137,7 @@ public:
 
 private:
     void add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w);
+//    void add_snp_edge_matrix(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void add_snp_edge_barcode(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_hic(ViewMap &weighted_graph, CViewMap &count_graph);
     void add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &sub_count_graph, VariantGraph & sub_variant_graph, std::map<uint, int> & subroutine_map, std::map<uint, uint> & subroutine_blk_start, std::map<uint,double> &block_qualities);
@@ -149,6 +152,7 @@ private:
     void read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void read_fragment_hic(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
     void read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
+    void read_fragment_matrix(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w);
     void read_fragment_nanopore(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph);
     void poss_phase_error_correction(uint block_start_idx);
     void fragment_supported_flipping_score(ptr_PhasedBlock &phased_block, Fragment & fragment, int *supporting_reads_count, double *supporting_weight_count, std::map<uint, std::set<uint>> &connection_map);

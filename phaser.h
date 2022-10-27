@@ -24,7 +24,7 @@ class Phaser
 {
 public:
     Phaser() = default;
-    explicit Phaser(const std::string & fnvcf, const std::string & fnout, std::vector<std::string> & fnfrags, const std::string &fnbed);
+    explicit Phaser(const std::string & fnvcf, const std::string & fnout, std::vector<std::string> & fnfrags, const std::string &fnbed, std::vector<double> & fr_weights);
     ~Phaser();
     void phasing();
     void set_contigs(std::string& contigs);

@@ -11,6 +11,7 @@
 #define PROTOCOL_TENX "tenx"
 #define PROTOCOL_PACBIO "pacbio"
 #define PROTOCOL_NANOPORE "nanopore"
+#define PURE_MATRIX "matrix"
 #define PROTOCOL_HYBRID "hybrid"
 bool HYBRID = false;
 bool NEW_FORMAT = false;
@@ -31,7 +32,7 @@ std::vector<int> OPERATIONS;
 enum optionIndex
 {
     UNKNOWN, HELP,CONTIGS, VCF,IDX, FRAGMENT, OUT, TENX, HIC, _WINDOW_SIZE, COVERAGE, _RECURSIVE_LIMIT, NANOPORE, PACBIO, NOSORT,
-    _MAX_BARCODE_SPANNING_LENGTH, _WINDOW_OVERLAP, STATS, _NEWFORMAT, USESECONDARY, _KEEP_PHASING_INFO, _BASEOFFSET, _HYBRID,PROTOCOLS
+    _MAX_BARCODE_SPANNING_LENGTH, _WINDOW_OVERLAP, STATS, _NEWFORMAT, USESECONDARY, _KEEP_PHASING_INFO, _BASEOFFSET, _HYBRID,PROTOCOLS,WEIGHTS
 };
 
 
@@ -85,7 +86,8 @@ const option::Descriptor usage[] =
                 {HIC,               0, "H", "hic",                    Arg::None,     "\t-H,\t--hic\tSpecified for HiC data."},
                 {PACBIO,            0, "P", "pacbio",                 Arg::None,     "\t-P,\t--pacbio\tSpecified for Pacbio data."},
                 {NANOPORE,          0, "N", "nanopore",               Arg::None,     "\t-N,\t--nanopore\tSpecified for Nanopore data."},
-                {PROTOCOLS,         0,"p","protocols",                Arg::Required, "\t-p,\t--protocols\t Sequence protocols for corresponding to frags, split with comma, hic,ngs, tenx, pacbio, nanopore is supported"},
+                {PROTOCOLS,         0,"p","protocols",                Arg::Required, "\t-p,\t--protocols\t Sequence protocols for corresponding to frags or a pure matrix, split with comma, hic, ngs, tenx, pacbio, nanopore, matrix is supported"},
+                {WEIGHTS,         0,"w","weights",                Arg::Required, "\t-w,\t--weight\t Weights for each corresponding sequence protocols frags"},
                 {_HYBRID,           0, "", "hybrid",                  Arg::None,     "\t--hybrid\tSpecified for hybrid data type."},
                 {_NEWFORMAT,        0, "", "new_format",              Arg::None,     "\t--new_format\tSpecified when using new_format with extractHair"},
                 {_BASEOFFSET,       0, "", "base_offset",             Arg::Numeric,  "\t--base_offset\tQuality of set for read base, default is 33."},
@@ -179,10 +181,15 @@ int main(int argc, char *argv[])
     std::string frag = options[FRAGMENT].arg;
 //    multiply frags file support
     std::vector<std::string> frags;
+    std::vector<double> fr_weights;
     std::string token;
-    std::istringstream iss(options[FRAGMENT].arg);
-    while(std::getline(iss, token, ','))
+    std::istringstream iss_fr(options[FRAGMENT].arg);
+    while(std::getline(iss_fr, token, ','))
         frags.push_back(token);
+
+    std::istringstream iss_w(options[WEIGHTS].arg);
+    while(std::getline(iss_w, token, ','))
+        fr_weights.push_back(std::atof(token.c_str()));
 //    protocols
     std::istringstream protocols(options[PROTOCOLS].arg);
     while(std::getline(protocols, token, ',')) {
@@ -198,12 +205,13 @@ int main(int argc, char *argv[])
         } else if (token == PROTOCOL_NANOPORE) OPERATIONS.push_back(MODE_NANOPORE);
         else if (token == PROTOCOL_PACBIO) OPERATIONS.push_back(MODE_PACBIO);
         else if (token == PROTOCOL_HYBRID) OPERATIONS.push_back(MODE_HYBRID);
+        else if (token == PURE_MATRIX) OPERATIONS.push_back(MODE_MATRIX);
         else {
             std::cerr << "SpecHap: Error, --protocols muste be split with comma, and only hic, ngs, tenx, pacbio and nanopore are supported\n";
             exit(1);
         }
     }
-    auto *phaser = new Phaser(invcf, out, frags, fnbed);
+    auto *phaser = new Phaser(invcf, out, frags, fnbed, fr_weights);
     if (options[CONTIGS].arg != nullptr) {
         std::string contigs = options[CONTIGS].arg;
         phaser->set_contigs(contigs);

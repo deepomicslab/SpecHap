@@ -279,7 +279,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
             }
         }else {
             for (int i = 0; i < ngt; ++i) {
-                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+                ps_s[i] = (ps_s[i] >= INT_MAX || ps_s[i] < 0) ? 0:ps_s[i];
             }
         }
         ps_s[SIDX] = blk_no;
@@ -297,7 +297,7 @@ void VCFWriter::write_nxt_record(bcf1_t *record, ptr_ResultforSingleVariant resu
             }
         } else {
             for (int i = 0; i < ngt; ++i) {
-                ps_s[i] = ps_s[i] >= INT_MAX || ps_s[i] < 0 ? 0:ps_s[i];
+                ps_s[i] = (ps_s[i] >= INT_MAX || ps_s[i] < 0) ? 0:ps_s[i];
             }
         }
         bcf_update_format_int32(this->header, record, "PS", ps_s, ngt);
@@ -329,7 +329,9 @@ void VCFWriter::write_nxt_contigs(const char *contig, ChromoPhaser *chromo_phase
         idx2pos[idx] = record->pos + 1;
         ptr_ResultforSingleVariant resultforSingleVariant = chromo_phaser->results_for_variant[idx];
         bcf_translate(this->header, frvcf.header, record);
-
+        if (record->pos == 4565) {
+            auto tmp = 44;
+        }
         if (!is_uninitialized(resultforSingleVariant->block) && resultforSingleVariant->variant_phased() && resultforSingleVariant->get_filter() == filter_type::PASS)
         {
             if (gap_count >= 30)

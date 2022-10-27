@@ -73,7 +73,7 @@ void print_hap(ptr_PhasedBlock &block, uint idx)
 }
 
 // initialization
-Spectral::Spectral(std::vector<FragmentReader *>& frfrags, BEDReader *frbed, double threhold, int coverage, bool use_secondary)
+Spectral::Spectral(std::vector<FragmentReader *>& frfrags, std::vector<double>& fr_weights, BEDReader *frbed, double threhold, int coverage, bool use_secondary)
         :use_secondary(use_secondary), raw_graph(nullptr), raw_count(nullptr), threhold(threhold), epsilon(10e-2),
         coverage(coverage), q_aver(0.0),
         q_sum(0.0), barcode_linker(nullptr), barcode_linker_index_set(false), frbed(frbed), phasing_window(nullptr), chromo_phaser(nullptr)
@@ -86,6 +86,9 @@ Spectral::Spectral(std::vector<FragmentReader *>& frfrags, BEDReader *frbed, dou
     this->region_frag_stats = new RegionFragStats();
     this->barcode_linker->regionFragStats = region_frag_stats;
     this->offset = 0;
+    for (auto item : fr_weights) {
+        this->fr_weights.push_back(item);
+    }
 }
 
 Spectral::~Spectral()
@@ -139,15 +142,18 @@ void Spectral::reset()
         this->raw_graph[i] = 0.0;
         this->raw_count[i] = 0;
     }
-    this->frag_buffer.clear();
-//    read graph
+    //    read graph
     ViewMap weighted_graph(raw_graph, n, n);
     CViewMap count_graph(raw_count, n, n);
+    //    used for lst that large than window_size
+    set_prev_buff(weighted_graph, count_graph);
+    this->frag_buffer.clear();
+
     for (int i = 0; i < OPERATIONS.size(); i++) {
-        double w = 1;
-        if (i == 1) {
-            w = 0.5;
-        }
+        double w = this->fr_weights[i];
+//        if (i == 1) {
+//            w = 0.5;
+//        }
         auto item = OPERATIONS[i];
         if (item == MODE_10X)
             read_fragment_10x(i,weighted_graph,count_graph);
@@ -159,6 +165,8 @@ void Spectral::reset()
             read_fragment_nanopore(i,weighted_graph,count_graph);
         else if (item == MODE_PACBIO)
             read_fragment_pacbio(i,weighted_graph,count_graph, w);
+        else if (item == MODE_MATRIX)
+            read_fragment_matrix(i,weighted_graph,count_graph, w);
     }
 //    cal prob graph
 //    if (HAS_TENX){
@@ -166,6 +174,15 @@ void Spectral::reset()
 //    }
     cal_prob_matrix(weighted_graph, count_graph, nullptr, nullptr, nullptr);
 }
+void Spectral::set_prev_buff(ViewMap& weighted_graph, CViewMap& count_graph) {
+    double w = 1;
+    for (auto &item : this->frag_buffer) {
+        if (item.snps.back().first > this->start_variant_idx) {
+            this->add_snp_edge(item, weighted_graph,count_graph,1);
+        }
+    }
+}
+
 
 GMatrix Spectral::slice_submat(std::set<uint> &variants_mat, GMatrix &adj_mat)
 {
@@ -231,6 +248,7 @@ void Spectral::read_fragment(int frIdx, ViewMap &weighted_graph, CViewMap &count
 //    CViewMap count_graph(raw_count, n, n);
     while (fr->get_next_pe(fragment))
     {
+//        std::cout<<fragment.read_qual<<std::endl;
         add_snp_edge(fragment, weighted_graph, count_graph, w);
         this->frag_buffer.push_back(fragment);
         fragment.reset();
@@ -320,6 +338,26 @@ void Spectral::read_fragment_pacbio(int frIdx, ViewMap &weighted_graph, CViewMap
 //    cal_prob_matrix(weighted_graph, count_graph, nullptr, nullptr, nullptr);
 }
 
+void Spectral::read_fragment_matrix(int frIdx, ViewMap &weighted_graph, CViewMap &count_graph, double w){
+    auto fr = frs[frIdx];
+    std::vector<Fragment> frags;
+    for (int i = 0; i < 4; i++) {
+        Fragment f;
+        frags.push_back(f);
+    }
+
+    while (fr->get_next_matrix(frags))
+    {
+        for (int i = 0; i < 4; i++) {
+            Fragment &f = frags[i];
+            add_snp_edge(f, weighted_graph, count_graph,w);
+            this->frag_buffer.push_back(frags[i]);
+            f.reset();
+        }
+    }
+}
+
+
 // aid function
 void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMap &count_graph, double w)
 {
@@ -331,9 +369,6 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
     for (auto &i : fragment.snps) {
         if (!phasing_window->in_range(i.first))
             continue;
-        if (i.first == 246583 || i.first == 246584 || i.first == 246585) {
-            int tmp =33;
-        }
         auto a = this->phasing_window->var_idx2mat_idx(i.first);
         if (a < 0 or a >= this->variant_count)
             continue;
@@ -346,11 +381,22 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
 
         if ((i.second.first == 0 && blk->results[i.first]->is_REF()) ||
             (i.second.first == 1 && blk->results[i.first]->is_ALT())) {
-            block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
-            block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
+            if (fragment.getType() == FRAG_MATRIX) {
+//                Here, beacause the matrix format with count 00(11) twice
+                block_supporting_likelyhood[blk_idx].first += i.second.second / 2;
+                block_supporting_likelyhood[blk_idx].second += 0;
+            } else {
+                block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
+                block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
+            }
         } else {
-            block_supporting_likelyhood[blk_idx].first += log10(1 - i.second.second);
-            block_supporting_likelyhood[blk_idx].second += log10(i.second.second);
+            if (fragment.getType() == FRAG_MATRIX) {
+                block_supporting_likelyhood[blk_idx].first += 0;
+                block_supporting_likelyhood[blk_idx].second += i.second.second / 2;
+            } else {
+                block_supporting_likelyhood[blk_idx].first += log10(1 - i.second.second);
+                block_supporting_likelyhood[blk_idx].second += log10(i.second.second);
+            }
         }
 
     }
@@ -364,8 +410,21 @@ void Spectral::add_snp_edge(Fragment &fragment, ViewMap &weighted_graph, CViewMa
             auto b = this->phasing_window->var_idx2mat_idx(j.first);
             if (a == b)
                 continue;
-            double P_H1 = cal_score(i.second.first + j.second.first, i.second.second + j.second.second);
-            double P_H2 = cal_score(i.second.first + j.second.second, i.second.second + j.second.first);
+            double P_H1, P_H2;
+            if (fragment.getType() == FRAG_MATRIX) {
+                if ((i.second.first != 0 && j.second.first != 0 ) || (i.second.second != 0 && j.second.second != 0)) {
+                    P_H1 = (i.second.first + j.second.first + i.second.second + j.second.second) / 2;
+                    P_H2 = 0;
+                } else {
+                    P_H1 = 0;
+                    P_H2 = (i.second.first + j.second.second + i.second.second + j.second.first) / 2;
+                }
+            } else {
+                P_H1 = cal_score(i.second.first + j.second.first, i.second.second + j.second.second);
+                P_H2 = cal_score(i.second.first + j.second.second, i.second.second + j.second.first);
+            }
+//            double P_H1 = cal_score(i.second.first + j.second.first, i.second.second + j.second.second);
+//            double P_H2 = cal_score(i.second.first + j.second.second, i.second.second + j.second.first);
             if (P_H2 == P_H1)
                 continue;
             double score = abs(P_H1 - P_H2);
@@ -668,7 +727,7 @@ void Spectral::solver()
     }
     for (auto i : phasing_window->current_window_idxes)
     {
-        if (i == 15)
+        if (i == 561)
             int tmp = 9;
         mat_idx = phasing_window->var_idx2mat_idx(i);
         if (met_idx.find(mat_idx) == met_idx.end())
@@ -802,14 +861,35 @@ void Spectral::add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &su
             if (block_supporting_likelyhood.count(blk_idx) == 0)
                 block_supporting_likelyhood[blk_idx] = std::make_pair(0.0, 0.0);
 
+//            if ((i.second.first == 0 && blk->results[i.first]->is_REF()) ||
+//                (i.second.first != 1 && blk->results[i.first]->is_ALT())) {
+//                block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
+//                block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
+//            } else {
+//                block_supporting_likelyhood[blk_idx].first += log10(1 - i.second.second);
+//                block_supporting_likelyhood[blk_idx].second += log10(i.second.second);
+//            }
+
             if ((i.second.first == 0 && blk->results[i.first]->is_REF()) ||
-                (i.second.first != 1 && blk->results[i.first]->is_ALT())) {
-                block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
-                block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
+                (i.second.first == 1 && blk->results[i.first]->is_ALT())) {
+                if (fragment.getType() == FRAG_MATRIX) {
+//                Here, beacause the matrix format with count 00(11) twice
+                    block_supporting_likelyhood[blk_idx].first += i.second.second / 2;
+                    block_supporting_likelyhood[blk_idx].second += 0;
+                } else {
+                    block_supporting_likelyhood[blk_idx].first += log10(i.second.second);
+                    block_supporting_likelyhood[blk_idx].second += log10(1 - i.second.second);
+                }
             } else {
-                block_supporting_likelyhood[blk_idx].first += log10(1 - i.second.second);
-                block_supporting_likelyhood[blk_idx].second += log10(i.second.second);
+                if (fragment.getType() == FRAG_MATRIX) {
+                    block_supporting_likelyhood[blk_idx].first += 0;
+                    block_supporting_likelyhood[blk_idx].second += i.second.second / 2;
+                } else {
+                    block_supporting_likelyhood[blk_idx].first += log10(1 - i.second.second);
+                    block_supporting_likelyhood[blk_idx].second += log10(i.second.second);
+                }
             }
+
 
         }
 
@@ -822,8 +902,19 @@ void Spectral::add_snp_edge_subroutine(ViewMap &sub_weighted_graph, CViewMap &su
                 auto b = this->phasing_window->var_idx2mat_idx(j.first);
                 if (a == b)
                     continue;
-                double P_H1 = cal_score(i.second.first + j.second.first, i.second.second + j.second.second);
-                double P_H2 = cal_score(i.second.first + j.second.second, i.second.second + j.second.first);
+                double P_H1, P_H2;
+                if (fragment.getType() == FRAG_MATRIX) {
+                    if ((i.second.first != 0 && j.second.first != 0 ) || (i.second.second != 0 && j.second.second != 0)) {
+                        P_H1 = (i.second.first + j.second.first + i.second.second + j.second.second) / 2;
+                        P_H2 = 0;
+                    } else {
+                        P_H1 = 0;
+                        P_H2 = (i.second.first + j.second.second + i.second.second + j.second.first) / 2;
+                    }
+                } else {
+                    P_H1 = cal_score(i.second.first + j.second.first, i.second.second + j.second.second);
+                    P_H2 = cal_score(i.second.first + j.second.second, i.second.second + j.second.first);
+                }
                 if (P_H2 == P_H1)
                     continue;
                 double score = abs(P_H1 - P_H2);

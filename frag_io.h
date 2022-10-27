@@ -58,6 +58,7 @@ public:
     bool get_next_hic(Fragment &fragment);
     bool get_next_pacbio(Fragment &fragment);
     bool get_next_nanopore(Fragment &fragment);
+    bool get_next_matrix(std::vector<Fragment>& frags);
     bool get_next_hybrid(Fragment &fragment);
     
 };

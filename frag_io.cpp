@@ -563,6 +563,112 @@ bool FragmentReader::get_next_pacbio(Fragment &fragment)
     }
 }
 
+bool FragmentReader::get_next_matrix(std::vector<Fragment>& frags) {
+    std::fstream::streampos curr_pos;
+    try
+    {
+        this->frag_file.peek();
+        curr_pos = this->tell();
+        int index_idx = 2;
+        int estimated_buffer_len = 6;
+
+        std::string line;
+
+        this->buffer.clear();
+
+        if (!std::getline(this->frag_file, line))
+            return false;
+        tokenize(line, this->buffer, " ", true);
+        //EOF
+        auto token_size = buffer.size();
+
+        if (token_size < estimated_buffer_len)
+        {
+            std::string message = "detected truncated fragment file, the truncated line is: " + line ;
+            logging(std::cerr, message);
+            exit(1);
+        }
+
+//        std::string &name = this->buffer[1];
+        uint idx_start = std::stol(this->buffer[0]);
+
+        //new chromosome
+        if (idx_start >= curr_chr_var_count + prev_chr_var_count)
+        {
+            this->seek(curr_pos);
+            return false;
+        }
+
+
+        //new phasing window
+        if (idx_start >= this->window_end)
+        {
+            this->seek(this->nxt_window_start);
+            return false;
+        }
+
+        //set reading position for next phasing window
+        if (idx_start >= this->intended_window_end && !this->nxt_window_set)
+        {
+            this->nxt_window_start = curr_pos;
+            this->nxt_window_set = true;
+        }
+        for (int i = 0; i < estimated_buffer_len - 2; i++) {
+            frags[i].read_qual = 60.0 / -10;
+            uint ix1 = std::stol(this->buffer[0]) - this->prev_chr_var_count;
+            uint ix2 = std::stol(this->buffer[1]) - this->prev_chr_var_count;
+            snp_info t1;
+            snp_info t2;
+            if ( i == 0) {
+                t1 = std::make_pair(ix1, std::make_pair(0, std::atof(this->buffer[i + 2].c_str())));
+                t2 = std::make_pair(ix2, std::make_pair(0, std::atof(this->buffer[i + 2].c_str())));
+            } else if (i == 1) {
+                t1 = std::make_pair(ix1, std::make_pair(0, std::atof(this->buffer[i + 2].c_str())));
+                t2 = std::make_pair(ix2, std::make_pair(1, std::atof(this->buffer[i + 2].c_str())));
+            } else if (i == 2) {
+                t1 = std::make_pair(ix1, std::make_pair(1, std::atof(this->buffer[i + 2].c_str())));
+                t2 = std::make_pair(ix2, std::make_pair(0, std::atof(this->buffer[i + 2].c_str())));
+            } else if (i == 3) {
+                t1 = std::make_pair(ix1, std::make_pair(1, std::atof(this->buffer[i + 2].c_str())));
+                t2 = std::make_pair(ix2, std::make_pair(1, std::atof(this->buffer[i + 2].c_str())));
+            } else {
+                std::string message = "detected truncated matrix file, exit now.";
+                logging(std::cerr, message);
+                exit(1);
+            }
+            frags[i].insert(t1);
+            frags[i].insert(t2);
+            frags[i].update_start_end();
+            frags[i].setType(FRAG_MATRIX);
+        }
+
+//        std::string &bs_qual = this->buffer[token_size - 2];
+//
+//        uint bs_ix = 0;
+//        uint ix;
+//
+//        ix = std::stol(this->buffer[0]) - this->prev_chr_var_count;
+//
+//        for (int i = 0; i < no_blx; i++)
+//        {
+//            ix = std::stol(this->buffer[0]) - 1 - this->prev_chr_var_count; //0-based     //potential problem here
+//            std::string &blk = this->buffer[2 * i + 3];
+//            for (char &c : blk)
+//            {
+//                snp_info t = std::make_pair(ix++, std::make_pair(c - '0', this->cal_base_qual(bs_qual[bs_ix++])));
+//                fragment.insert(t);
+//            }
+//        }
+//        fragment.type = FRAG_NORMAL;
+        return true;
+    }
+    catch (const std::ios_base::failure &e)
+    {
+        return false;
+    }
+
+}
+
 
 bool FragmentReader::get_next_hybrid(Fragment &fragment)
 {

@@ -90,7 +90,7 @@ public:
     }
     // for query with connected components
     inline bool contain(uint idx) { return connected_component.find(idx) != connected_component.end();}
-    inline bool disjointedatpos(uint idx) { return connected_component[idx].size() == 0;}
+    inline bool disjointedatpos(uint idx) { return connected_component.count(idx) == 0;}
     inline void remove_variant(uint idx)
     {
         filtered[idx] = true;

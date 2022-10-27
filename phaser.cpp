@@ -12,7 +12,7 @@
 
 // TODO clarify between variant count and block count
 
-Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<std::string> & fnfrags, const std::string &fnbed)
+Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<std::string> & fnfrags, const std::string &fnbed, std::vector<double> & fr_weights)
 {
     for (int i = 0; i < fnfrags.size(); i++) {
         auto item = fnfrags[i];
@@ -34,7 +34,7 @@ Phaser::Phaser(const std::string &fnvcf, const std::string &fnout, std::vector<s
     threshold = 1e-5;
 //    threshold = 0;
 
-    spectral = new Spectral(frfrags, frbed, threshold, coverage, use_secondary);
+    spectral = new Spectral(frfrags, fr_weights, frbed, threshold, coverage, use_secondary);
 }
 
 Phaser::~Phaser()

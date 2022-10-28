@@ -87,7 +87,7 @@ const option::Descriptor usage[] =
                 {PACBIO,            0, "P", "pacbio",                 Arg::None,     "\t-P,\t--pacbio\tSpecified for Pacbio data."},
                 {NANOPORE,          0, "N", "nanopore",               Arg::None,     "\t-N,\t--nanopore\tSpecified for Nanopore data."},
                 {PROTOCOLS,         0,"p","protocols",                Arg::Required, "\t-p,\t--protocols\t Sequence protocols for corresponding to frags or a pure matrix, split with comma, hic, ngs, tenx, pacbio, nanopore, matrix is supported"},
-                {WEIGHTS,         0,"w","weights",                Arg::Required, "\t-w,\t--weight\t Weights for each corresponding sequence protocols frags"},
+                {WEIGHTS,         0,"w","weights",                Arg::Required, "\t-w,\t--weight\t Weights for each corresponding sequence protocols frags, split with comma, default 1"},
                 {_HYBRID,           0, "", "hybrid",                  Arg::None,     "\t--hybrid\tSpecified for hybrid data type."},
                 {_NEWFORMAT,        0, "", "new_format",              Arg::None,     "\t--new_format\tSpecified when using new_format with extractHair"},
                 {_BASEOFFSET,       0, "", "base_offset",             Arg::Numeric,  "\t--base_offset\tQuality of set for read base, default is 33."},
@@ -183,13 +183,20 @@ int main(int argc, char *argv[])
     std::vector<std::string> frags;
     std::vector<double> fr_weights;
     std::string token;
+    bool no_input_w = false;
+    if (options[WEIGHTS]) {
+        std::istringstream iss_w(options[WEIGHTS].arg);
+        while(std::getline(iss_w, token, ','))
+            fr_weights.push_back(std::atof(token.c_str()));
+    } else {
+        no_input_w = true;
+    }
     std::istringstream iss_fr(options[FRAGMENT].arg);
-    while(std::getline(iss_fr, token, ','))
+    while(std::getline(iss_fr, token, ',')) {
         frags.push_back(token);
-
-    std::istringstream iss_w(options[WEIGHTS].arg);
-    while(std::getline(iss_w, token, ','))
-        fr_weights.push_back(std::atof(token.c_str()));
+        if (no_input_w)
+            fr_weights.push_back(1);
+    }
 //    protocols
     std::istringstream protocols(options[PROTOCOLS].arg);
     while(std::getline(protocols, token, ',')) {

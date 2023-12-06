@@ -24,7 +24,7 @@ class Phaser
 {
 public:
     Phaser() = default;
-    explicit Phaser(const std::string & fnvcf, const std::string & fnout, const std::string & fnfrag, const std::string &fnbed);
+    explicit Phaser(const std::string & fnvcf, const std::string & fnout, std::vector<std::string> & fnfrags, const std::string &fnbed);
     ~Phaser();
     void phasing();
 
@@ -33,7 +33,8 @@ private:
     double threshold;
     VCFReader *frvcf;
     VCFWriter *fwvcf;
-    FragmentReader *frfrag;
+    std::vector<FragmentReader* > frfrags;
+//    FragmentReader *frfrag;
     BEDReader *frbed;
     Spectral *spectral;
     int coverage;
